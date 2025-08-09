@@ -1,0 +1,374 @@
+package models
+
+import (
+	"cmp"
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// Mock fitness evaluator for testing
+type mockFitnessEvaluator[T cmp.Ordered] struct {
+	fitnessValues []float64
+	errorOnIndex  int // -1 means no error, otherwise error on this index
+	callCount     int
+}
+
+func (m *mockFitnessEvaluator[T]) Evaluate(chromosome []T) (float64, error) {
+	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
+		m.callCount++
+		return 0, errors.New("fitness evaluation error")
+	}
+
+	if m.callCount >= len(m.fitnessValues) {
+		m.callCount++
+		return 0, nil
+	}
+
+	fitness := m.fitnessValues[m.callCount]
+	m.callCount++
+	return fitness, nil
+}
+
+func (m *mockFitnessEvaluator[T]) reset() {
+	m.callCount = 0
+}
+
+// Helper to create test population using factories
+func createTestPopulation[T cmp.Ordered](chromosomes [][]T) *Population[T] {
+	solutionFactory := NewSolutionFactory[T]()
+	populationFactory := NewPopulationFactory[T]()
+
+	individuals := make([]Solution[T], len(chromosomes))
+	for i, chromosome := range chromosomes {
+		solution := solutionFactory.CreateSolution(chromosome)
+		individuals[i] = *solution
+	}
+
+	return populationFactory.CreatePopulation(individuals)
+}
+
+func TestNewGeneticAlgorithmExecutor(t *testing.T) {
+	t.Run("creates executor with valid parameters", func(t *testing.T) {
+		population := createTestPopulation([][]int{{1, 2}, {3, 4}})
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{10.0, 20.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		require.NotNil(t, executor)
+		assert.Equal(t, *population, executor.population)
+		assert.Equal(t, fitnessEvaluator, executor.fitnessEvaluator)
+	})
+
+	t.Run("creates executor with empty population", func(t *testing.T) {
+		populationFactory := NewPopulationFactory[int]()
+		population := populationFactory.CreateEmptyPopulation()
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		require.NotNil(t, executor)
+		assert.Len(t, executor.population.Individuals, 0)
+	})
+
+	t.Run("creates executor with different types", func(t *testing.T) {
+		// Test with float64
+		floatPopulation := createTestPopulation([][]float64{{1.5, 2.5}, {3.5, 4.5}})
+		floatEvaluator := &mockFitnessEvaluator[float64]{
+			fitnessValues: []float64{15.0, 25.0},
+			errorOnIndex:  -1,
+		}
+
+		floatExecutor := NewGeneticAlgorithmExecutor(*floatPopulation, floatEvaluator)
+		require.NotNil(t, floatExecutor)
+
+		// Test with string
+		stringPopulation := createTestPopulation([][]string{{"1", "2"}, {"3", "4"}})
+		stringEvaluator := &mockFitnessEvaluator[string]{
+			fitnessValues: []float64{100.0, 200.0},
+			errorOnIndex:  -1,
+		}
+
+		stringExecutor := NewGeneticAlgorithmExecutor(*stringPopulation, stringEvaluator)
+		require.NotNil(t, stringExecutor)
+	})
+}
+
+func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
+	t.Run("successfully refreshes fitness for all individuals", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+			{7, 8, 9},
+		})
+
+		expectedFitness := []float64{10.5, 20.5, 30.5}
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: expectedFitness,
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		// Verify initial fitness values are 0
+		for i, individual := range executor.population.Individuals {
+			assert.Equal(t, 0.0, individual.Fitness, "Individual %d should start with 0 fitness", i)
+		}
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, len(expectedFitness), fitnessEvaluator.callCount)
+
+		// Verify fitness values were updated
+		for i, individual := range executor.population.Individuals {
+			assert.Equal(t, expectedFitness[i], individual.Fitness, "Individual %d should have correct fitness", i)
+		}
+	})
+
+	t.Run("returns error when fitness evaluator fails", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+			{7, 8, 9},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{10.5, 20.5, 30.5},
+			errorOnIndex:  1, // Error on second individual
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "fitness evaluation error")
+
+		// Should have called evaluator twice (first success, second failure)
+		assert.Equal(t, 2, fitnessEvaluator.callCount)
+
+		// First individual should have updated fitness, others should remain 0
+		assert.Equal(t, 10.5, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 0.0, executor.population.Individuals[1].Fitness)
+		assert.Equal(t, 0.0, executor.population.Individuals[2].Fitness)
+	})
+
+	t.Run("returns error when fitness evaluator fails on first individual", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{10.5, 20.5},
+			errorOnIndex:  0, // Error on first individual
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		assert.Error(t, err)
+		assert.Equal(t, 1, fitnessEvaluator.callCount)
+
+		// All individuals should still have 0 fitness
+		for i, individual := range executor.population.Individuals {
+			assert.Equal(t, 0.0, individual.Fitness, "Individual %d should remain with 0 fitness", i)
+		}
+	})
+
+	t.Run("handles empty population", func(t *testing.T) {
+		population := createTestPopulation([][]int{})
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, fitnessEvaluator.callCount)
+	})
+
+	t.Run("handles single individual population", func(t *testing.T) {
+		population := createTestPopulation([][]int{{1, 2, 3}})
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{42.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, fitnessEvaluator.callCount)
+		assert.Equal(t, 42.0, executor.population.Individuals[0].Fitness)
+	})
+
+	t.Run("can refresh fitness multiple times", func(t *testing.T) {
+		population := createTestPopulation([][]int{{1, 2}, {3, 4}})
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{10.0, 20.0, 15.0, 25.0}, // Values for two refresh cycles
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		// First refresh
+		err := executor.RefreshFitness()
+		require.NoError(t, err)
+		assert.Equal(t, 10.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 20.0, executor.population.Individuals[1].Fitness)
+
+		// Second refresh - should update with new values
+		err = executor.RefreshFitness()
+		require.NoError(t, err)
+		assert.Equal(t, 15.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 25.0, executor.population.Individuals[1].Fitness)
+		assert.Equal(t, 4, fitnessEvaluator.callCount)
+	})
+}
+
+func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
+	t.Run("works with float64 chromosomes", func(t *testing.T) {
+		population := createTestPopulation([][]float64{
+			{1.1, 2.2, 3.3},
+			{4.4, 5.5, 6.6},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[float64]{
+			fitnessValues: []float64{11.11, 22.22},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 11.11, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 22.22, executor.population.Individuals[1].Fitness)
+	})
+
+	t.Run("works with string chromosomes", func(t *testing.T) {
+		population := createTestPopulation([][]string{
+			{"1", "2", "3"},
+			{"4", "5", "6"},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[string]{
+			fitnessValues: []float64{100.0, 200.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 100.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 200.0, executor.population.Individuals[1].Fitness)
+	})
+
+	t.Run("works with uint8 chromosomes", func(t *testing.T) {
+		population := createTestPopulation([][]uint8{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[uint8]{
+			fitnessValues: []float64{6.0, 15.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 15.0, executor.population.Individuals[1].Fitness)
+	})
+}
+
+func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
+	t.Run("handles individuals with empty chromosomes", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{},        // Empty chromosome
+			{1, 2, 3}, // Normal chromosome
+			{},        // Another empty chromosome
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{0.0, 6.0, 0.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 0.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 6.0, executor.population.Individuals[1].Fitness)
+		assert.Equal(t, 0.0, executor.population.Individuals[2].Fitness)
+	})
+}
+
+// Integration test with real SimpleSumFitnessEvaluator
+func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
+	t.Run("integration with SimpleSumFitnessEvaluator", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},   // Sum: 6
+			{4, 5, 6},   // Sum: 15
+			{-1, 0, 1},  // Sum: 0
+			{10, -5, 2}, // Sum: 7
+		})
+
+		// Use the actual SimpleSumFitnessEvaluator
+		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 15.0, executor.population.Individuals[1].Fitness)
+		assert.Equal(t, 0.0, executor.population.Individuals[2].Fitness)
+		assert.Equal(t, 7.0, executor.population.Individuals[3].Fitness)
+	})
+}
+
+func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
+	t.Run("works with custom ordered types", func(t *testing.T) {
+		population := createTestPopulation([][]CustomInt{
+			{CustomInt(1), CustomInt(2), CustomInt(3)},
+			{CustomInt(4), CustomInt(5), CustomInt(6)},
+		})
+
+		fitnessEvaluator := &mockFitnessEvaluator[CustomInt]{
+			fitnessValues: []float64{60.0, 150.0},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.NoError(t, err)
+		assert.Equal(t, 60.0, executor.population.Individuals[0].Fitness)
+		assert.Equal(t, 150.0, executor.population.Individuals[1].Fitness)
+	})
+}

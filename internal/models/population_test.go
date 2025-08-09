@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"math/rand"
 	"testing"
 
@@ -14,54 +13,8 @@ func mockFitnessFunction(ch []int) (float64, error) {
 	return 999.0, nil
 }
 
-func mockErrorFitnessFunction(ch []int) (float64, error) {
-	return 0.0, errors.New("fitness calculation error")
-}
-
 func mockRandomIntGenerator() int {
 	return rand.Intn(100)
-}
-
-func TestPopulation_RefreshFitness(t *testing.T) {
-	solutionFactory := NewSolutionFactory[int]()
-	populationFactory := NewPopulationFactory[int]()
-
-	t.Run("fitness is refreshed for all individuals in population", func(t *testing.T) {
-		// Create solutions with mock fitness function
-		solution1 := solutionFactory.CreateSolution([]int{1, 2, 3}, mockFitnessFunction)
-		solution2 := solutionFactory.CreateSolution([]int{4, 5, 6}, mockFitnessFunction)
-
-		population := populationFactory.CreatePopulation([]Solution[int]{*solution1, *solution2})
-
-		// Verify initial fitness is 0
-		assert.Equal(t, 0.0, population.Individuals[0].Fitness)
-		assert.Equal(t, 0.0, population.Individuals[1].Fitness)
-
-		err := population.RefreshFitness()
-
-		assert.NoError(t, err)
-		assert.Equal(t, 999.0, population.Individuals[0].Fitness)
-		assert.Equal(t, 999.0, population.Individuals[1].Fitness)
-	})
-
-	t.Run("fitness calculation error is returned", func(t *testing.T) {
-		// Create solutions with error-producing fitness function
-		solution1 := solutionFactory.CreateSolution([]int{1, 2, 3}, mockErrorFitnessFunction)
-		solution2 := solutionFactory.CreateSolution([]int{4, 5, 6}, mockFitnessFunction)
-
-		population := populationFactory.CreatePopulation([]Solution[int]{*solution1, *solution2})
-
-		err := population.RefreshFitness()
-
-		assert.Error(t, err)
-		assert.Equal(t, "fitness calculation error", err.Error())
-	})
-
-	t.Run("refreshing fitness over an empty population succeeds", func(t *testing.T) {
-		population := populationFactory.CreateEmptyPopulation()
-		err := population.RefreshFitness()
-		assert.NoError(t, err)
-	})
 }
 
 func TestNewPopulationFactory(t *testing.T) {
@@ -76,8 +29,8 @@ func TestPopulationFactory_CreatePopulation(t *testing.T) {
 	solutionFactory := NewSolutionFactory[int]()
 
 	t.Run("create population with individuals is correct", func(t *testing.T) {
-		solution1 := solutionFactory.CreateSolution([]int{1, 2, 3}, mockFitnessFunction)
-		solution2 := solutionFactory.CreateSolution([]int{4, 5, 6}, mockFitnessFunction)
+		solution1 := solutionFactory.CreateSolution([]int{1, 2, 3})
+		solution2 := solutionFactory.CreateSolution([]int{4, 5, 6})
 		individuals := []Solution[int]{*solution1, *solution2}
 
 		population := populationFactory.CreatePopulation(individuals)
@@ -129,7 +82,6 @@ func TestPopulationFactory_CreateRandomPopulation(t *testing.T) {
 
 		for i, individual := range population.Individuals {
 			assert.Len(t, individual.Chromosome, chromosomeLength, "Individual %d should have correct chromosome length", i)
-			assert.NotNil(t, individual.fitnessFn, "Individual %d should have fitness function", i)
 		}
 	})
 
@@ -241,37 +193,6 @@ func TestPopulation_WithDifferentTypes(t *testing.T) {
 			for _, gene := range individual.Chromosome {
 				assert.Equal(t, "test", gene)
 			}
-		}
-	})
-}
-
-func TestPopulation_Integration(t *testing.T) {
-	t.Run("full workflow test", func(t *testing.T) {
-		populationFactory := NewPopulationFactory[int]()
-		solutionFactory := NewSolutionFactory[int]()
-
-		// Create a random oldPopulation
-		oldPopulation := populationFactory.CreateRandomPopulation(
-			3, 5, solutionFactory, mockRandomIntGenerator, mockFitnessFunction,
-		)
-
-		// Refresh fitness for all individuals
-		err := oldPopulation.RefreshFitness()
-		require.NoError(t, err)
-
-		// Verify all individuals have calculated fitness
-		for i, individual := range oldPopulation.Individuals {
-			assert.GreaterOrEqual(t, individual.Fitness, 0.0, "Individual %d should have non-negative fitness", i)
-		}
-
-		// Create a new population from existing individuals
-		newPopulation := populationFactory.CreatePopulation(oldPopulation.Individuals)
-		assert.Equal(t, len(oldPopulation.Individuals), len(newPopulation.Individuals))
-
-		// Verify that the new oldPopulation's individuals have the same fitness values
-		for i, individual := range newPopulation.Individuals {
-			assert.Equal(t, oldPopulation.Individuals[i].Fitness, individual.Fitness, "Individual %d should have the same fitness as the original", i)
-			assert.Equal(t, oldPopulation.Individuals[i].Chromosome, individual.Chromosome, "Individual %d should have the same chromosome as the original", i)
 		}
 	})
 }
