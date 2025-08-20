@@ -16,10 +16,10 @@ type mockFitnessEvaluator[T cmp.Ordered] struct {
 	callCount     int
 }
 
-func (m *mockFitnessEvaluator[T]) Evaluate(chromosome []T) (float64, error) {
+func (m *mockFitnessEvaluator[T]) Evaluate(chromosome *[]T) (float64, error) {
 	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
 		m.callCount++
-		return 0, errors.New("fitness evaluation error")
+		return 0, ErrFitnessEvaluationFailed
 	}
 
 	if m.callCount >= len(m.fitnessValues) {
@@ -58,10 +58,10 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		require.NotNil(t, executor)
-		assert.Equal(t, *population, executor.population)
+		assert.Equal(t, population, executor.population)
 		assert.Equal(t, fitnessEvaluator, executor.fitnessEvaluator)
 	})
 
@@ -73,7 +73,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		require.NotNil(t, executor)
 		assert.Len(t, executor.population.Individuals, 0)
@@ -87,7 +87,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		floatExecutor := NewGeneticAlgorithmExecutor(*floatPopulation, floatEvaluator)
+		floatExecutor := NewGeneticAlgorithmExecutor(floatPopulation, floatEvaluator)
 		require.NotNil(t, floatExecutor)
 
 		// Test with string
@@ -97,7 +97,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		stringExecutor := NewGeneticAlgorithmExecutor(*stringPopulation, stringEvaluator)
+		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator)
 		require.NotNil(t, stringExecutor)
 	})
 }
@@ -116,7 +116,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		// Verify initial fitness values are 0
 		for i, individual := range executor.population.Individuals {
@@ -146,12 +146,11 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  1, // Error on second individual
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "fitness evaluation error")
+		assert.ErrorIs(t, err, ErrFitnessEvaluationFailed)
 
 		// Should have called evaluator twice (first success, second failure)
 		assert.Equal(t, 2, fitnessEvaluator.callCount)
@@ -173,17 +172,31 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  0, // Error on first individual
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrFitnessEvaluationFailed)
 		assert.Equal(t, 1, fitnessEvaluator.callCount)
 
 		// All individuals should still have 0 fitness
 		for i, individual := range executor.population.Individuals {
 			assert.Equal(t, 0.0, individual.Fitness, "Individual %d should remain with 0 fitness", i)
 		}
+	})
+
+	t.Run("containing nil population returns error", func(t *testing.T) {
+		var population *Population[int] = nil
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{},
+			errorOnIndex:  -1,
+		}
+
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+		assert.Equal(t, 0, fitnessEvaluator.callCount)
 	})
 
 	t.Run("handles empty population", func(t *testing.T) {
@@ -193,11 +206,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
-
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
 		assert.Equal(t, 0, fitnessEvaluator.callCount)
 	})
 
@@ -208,7 +220,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
@@ -224,7 +236,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		// First refresh
 		err := executor.RefreshFitness()
@@ -253,7 +265,7 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
@@ -273,7 +285,7 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
@@ -293,7 +305,7 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
@@ -304,26 +316,54 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 }
 
 func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
-	t.Run("handles individuals with empty chromosomes", func(t *testing.T) {
+	t.Run("handles an individual with nil chromosome", func(t *testing.T) {
 		population := createTestPopulation([][]int{
-			{},        // Empty chromosome
 			{1, 2, 3}, // Normal chromosome
-			{},        // Another empty chromosome
+			nil,       // Nil chromosome
 		})
 
-		fitnessEvaluator := &mockFitnessEvaluator[int]{
-			fitnessValues: []float64{0.0, 6.0, 0.0},
-			errorOnIndex:  -1,
-		}
+		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
-		require.NoError(t, err)
-		assert.Equal(t, 0.0, executor.population.Individuals[0].Fitness)
-		assert.Equal(t, 6.0, executor.population.Individuals[1].Fitness)
-		assert.Equal(t, 0.0, executor.population.Individuals[2].Fitness)
+		require.Error(t, err)
+
+		var fe *FitnessEvaluationError
+		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
+
+		var ice *InvalidChromosomeError
+		require.True(t, errors.As(fe, &ice), "expected wrapped InvalidChromosomeError")
+
+		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
+		// The second individual should not have been processed due to the error
+		assert.Equal(t, 0.0, executor.population.Individuals[1].Fitness)
+	})
+
+	t.Run("handles an individual with empty chromosome", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3}, // Normal chromosome
+			{},        // Empty chromosome
+		})
+
+		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
+
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+
+		err := executor.RefreshFitness()
+
+		require.Error(t, err)
+
+		var fe *FitnessEvaluationError
+		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
+
+		var ice *InvalidChromosomeError
+		require.True(t, errors.As(fe, &ice), "expected wrapped InvalidChromosomeError")
+
+		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
+		// The second individual should not have been processed due to the error
+		assert.Equal(t, 0.0, executor.population.Individuals[1].Fitness)
 	})
 }
 
@@ -339,7 +379,7 @@ func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
 
 		// Use the actual SimpleSumFitnessEvaluator
 		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 
@@ -363,7 +403,7 @@ func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
 			errorOnIndex:  -1,
 		}
 
-		executor := NewGeneticAlgorithmExecutor(*population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
 
 		err := executor.RefreshFitness()
 

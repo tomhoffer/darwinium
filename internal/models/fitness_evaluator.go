@@ -3,6 +3,7 @@ package models
 
 import (
 	"cmp"
+	"fmt"
 
 	"github.com/tomhoffer/darwinium/internal/utils"
 )
@@ -19,7 +20,7 @@ type IFitnessEvaluator[T cmp.Ordered] interface {
 	// Returns:
 	//   - fitness: The calculated fitness value
 	//   - error: Any error that occurred during evaluation
-	Evaluate(chromosome []T) (float64, error)
+	Evaluate(chromosome *[]T) (float64, error)
 }
 
 // SimpleSumFitnessEvaluator implements a basic fitness evaluator that calculates
@@ -28,7 +29,6 @@ type IFitnessEvaluator[T cmp.Ordered] interface {
 type SimpleSumFitnessEvaluator[T cmp.Ordered] struct{}
 
 // NewSimpleSumFitnessEvaluator creates and returns a new SimpleSumFitnessEvaluator instance.
-// This evaluator can work with any generic type T that implements cmp.Ordered.
 func NewSimpleSumFitnessEvaluator[T cmp.Ordered]() *SimpleSumFitnessEvaluator[T] {
 	return &SimpleSumFitnessEvaluator[T]{}
 }
@@ -43,14 +43,54 @@ func NewSimpleSumFitnessEvaluator[T cmp.Ordered]() *SimpleSumFitnessEvaluator[T]
 // Returns:
 //   - float64: The sum of all chromosome values as the fitness
 //   - error: Any error that occurred during conversion or calculation
-func (s SimpleSumFitnessEvaluator[T]) Evaluate(chromosome []T) (float64, error) {
+func (s SimpleSumFitnessEvaluator[T]) Evaluate(chromosome *[]T) (float64, error) {
+
+	if len(*chromosome) == 0 {
+		return 0.0, NewFitnessEvaluationError("cannot calculate fitness", NewInvalidChromosomeError("empty chromosome found", nil))
+	}
+
 	var sum float64
-	for _, val := range chromosome {
+	for _, val := range *chromosome {
 		converted, err := utils.ConvertToFloat64(val)
 		if err != nil {
-			return 0, err
+			errMsg := fmt.Sprintf("invalid chromosome value %v", val)
+			wrappedErr := NewInvalidChromosomeError("unable to convert chromosome value to float64", err)
+			return 0, NewFitnessEvaluationError(errMsg, wrappedErr)
 		}
 		sum += converted
 	}
 	return sum, nil
+}
+
+// FitnessEvaluationError represents an error that occurs during a fitness computation or evaluation process.
+// Message provides a summary of the error, while Wrapped contains the underlying cause, if present.
+type FitnessEvaluationError struct {
+	// Message describes the error at a high level.
+	Message string
+	// Wrapped holds the underlying error that triggered this error. Can be nil.
+	Wrapped error
+}
+
+// Error implements the error interface.
+func (e *FitnessEvaluationError) Error() string {
+	return fmt.Sprintf("%s: %v", e.Message, e.Wrapped)
+}
+
+// Unwrap enables errors.Is and errors.As to traverse the error chain.
+func (e *FitnessEvaluationError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Wrapped
+}
+
+// NewFitnessEvaluationError constructs a *FitnessEvaluationError with the provided
+// message and wrapped error. Returning the concrete type makes the constructor's
+// intent explicit while callers can still use it as an error (the value satisfies
+// the error interface).
+func NewFitnessEvaluationError(message string, wrapped error) *FitnessEvaluationError {
+	return &FitnessEvaluationError{
+		Message: message,
+		Wrapped: wrapped,
+	}
 }

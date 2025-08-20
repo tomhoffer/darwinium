@@ -6,7 +6,11 @@ import (
 )
 
 func ConvertToFloat64(v any) (float64, error) {
-	switch n := any(v).(type) {
+	if v == nil {
+		return 0, fmt.Errorf("cannot convert nil value to float64")
+	}
+
+	switch n := v.(type) {
 	case float32:
 		return float64(n), nil
 	case float64:
@@ -36,14 +40,14 @@ func ConvertToFloat64(v any) (float64, error) {
 	case string:
 		f, err := strconv.ParseFloat(n, 64)
 		if err != nil {
-			return 0, fmt.Errorf("cannot convert string %q to float64: %w", n, err)
+			return 0, fmt.Errorf("cannot convert string %q to float64", n)
 		}
 		return f, nil
 	default:
 		s := fmt.Sprint(v)
 		f, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			return 0, fmt.Errorf("cannot convert %T to float64: %w", v, err)
+			return 0, fmt.Errorf("cannot convert type %T to float64", v)
 		}
 		return f, nil
 	}
