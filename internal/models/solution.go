@@ -11,6 +11,9 @@ type ISolution[T any] interface {
 	// RefreshFitness updates the fitness value of the solution.
 	// This method should recalculate the fitness based on the current chromosome.
 	RefreshFitness()
+
+	// DeepCopy creates a deep copy of the solution.
+	DeepCopy() *ISolution[T]
 }
 
 // Solution represents a single solution in a genetic algorithm.
@@ -22,6 +25,18 @@ type Solution[T cmp.Ordered] struct {
 	// Fitness represents the quality or performance of the solution.
 	// Higher values typically indicate better solutions.
 	Fitness float64
+}
+
+// DeepCopy creates a deep copy of the solution.
+// The returned solution contains a deep copy of the chromosome and its fitness value.
+//
+// Returns:
+//   - A pointer to the newly created Solution
+func (s *Solution[T]) DeepCopy() *Solution[T] {
+	return &Solution[T]{
+		Chromosome: append([]T{}, s.Chromosome...),
+		Fitness:    s.Fitness,
+	}
 }
 
 // SolutionFactory provides factory methods for creating Solution instances.

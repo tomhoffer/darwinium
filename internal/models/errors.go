@@ -6,13 +6,16 @@ import (
 	"fmt"
 )
 
-// InvalidChromosomeError represents an error that occurs when a chromosome contains invalid data type or content.
+// InvalidChromosomeError represents an error related to an invalid chromosome structure.
+// Message provides a summary of the error, while Wrapped contains the underlying cause, if present.
 type InvalidChromosomeError struct {
+	// Message describes the error at a high level.
 	Message string
+	// Wrapped holds the underlying error that triggered this error. Can be nil.
 	Wrapped error
 }
 
-// Error implements the error interface
+// Error implements the error interface.
 func (e *InvalidChromosomeError) Error() string {
 	if e.Wrapped != nil {
 		return fmt.Sprintf("%s: %v", e.Message, e.Wrapped)
@@ -28,7 +31,7 @@ func (e *InvalidChromosomeError) Unwrap() error {
 	return e.Wrapped
 }
 
-// NewInvalidChromosomeError creates a new InvalidChromosomeError with the given message and wrapped error.
+// NewInvalidChromosomeError constructs a *InvalidChromosomeError with the provided message and wrapped error.
 func NewInvalidChromosomeError(message string, wrapped error) *InvalidChromosomeError {
 	return &InvalidChromosomeError{
 		Message: message,
