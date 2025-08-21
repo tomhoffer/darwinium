@@ -57,8 +57,10 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			fitnessValues: []float64{10.0, 20.0},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		require.NotNil(t, executor)
 		assert.Equal(t, population, executor.population)
@@ -72,8 +74,10 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			fitnessValues: []float64{},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		require.NotNil(t, executor)
 		assert.Len(t, executor.population.Individuals, 0)
@@ -86,8 +90,10 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			fitnessValues: []float64{15.0, 25.0},
 			errorOnIndex:  -1,
 		}
+		floatMutator := &mockMutator[float64]{}
+		floatSelector := &mockSelector[float64]{}
 
-		floatExecutor := NewGeneticAlgorithmExecutor(floatPopulation, floatEvaluator)
+		floatExecutor := NewGeneticAlgorithmExecutor(floatPopulation, floatEvaluator, floatMutator, floatSelector)
 		require.NotNil(t, floatExecutor)
 
 		// Test with string
@@ -96,8 +102,10 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 			fitnessValues: []float64{100.0, 200.0},
 			errorOnIndex:  -1,
 		}
+		stringMutator := &mockMutator[string]{}
+		stringSelector := &mockSelector[string]{}
 
-		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator)
+		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator, stringMutator, stringSelector)
 		require.NotNil(t, stringExecutor)
 	})
 }
@@ -115,8 +123,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: expectedFitness,
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		// Verify initial fitness values are 0
 		for i, individual := range executor.population.Individuals {
@@ -145,8 +155,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{10.5, 20.5, 30.5},
 			errorOnIndex:  1, // Error on second individual
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -171,8 +183,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{10.5, 20.5},
 			errorOnIndex:  0, // Error on first individual
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -191,8 +205,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
@@ -205,8 +221,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
@@ -219,8 +237,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{42.0},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -235,8 +255,10 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			fitnessValues: []float64{10.0, 20.0, 15.0, 25.0}, // Values for two refresh cycles
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		// First refresh
 		err := executor.RefreshFitness()
@@ -253,7 +275,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 	})
 }
 
-func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
+func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T) {
 	t.Run("works with float64 chromosomes", func(t *testing.T) {
 		population := createTestPopulation([][]float64{
 			{1.1, 2.2, 3.3},
@@ -264,8 +286,10 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			fitnessValues: []float64{11.11, 22.22},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[float64]{}
+		selector := &mockSelector[float64]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -284,8 +308,10 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			fitnessValues: []float64{100.0, 200.0},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[string]{}
+		selector := &mockSelector[string]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -304,8 +330,10 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 			fitnessValues: []float64{6.0, 15.0},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[uint8]{}
+		selector := &mockSelector[uint8]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -315,7 +343,7 @@ func TestGeneticAlgorithmExecutor_WithDifferentTypes(t *testing.T) {
 	})
 }
 
-func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
+func TestGeneticAlgorithmExecutor_RefreshFitness_EdgeCases(t *testing.T) {
 	t.Run("handles an individual with nil chromosome", func(t *testing.T) {
 		population := createTestPopulation([][]int{
 			{1, 2, 3}, // Normal chromosome
@@ -323,8 +351,10 @@ func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
 		})
 
 		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -345,8 +375,10 @@ func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
 		})
 
 		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -363,25 +395,56 @@ func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
 
 // Integration test with real SimpleSumFitnessEvaluator
 func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
-	t.Run("integration with SimpleSumFitnessEvaluator", func(t *testing.T) {
+	t.Run("integration with real components", func(t *testing.T) {
 		population := createTestPopulation([][]int{
 			{1, 2, 3},   // Sum: 6
 			{4, 5, 6},   // Sum: 15
 			{-1, 0, 1},  // Sum: 0
 			{10, -5, 2}, // Sum: 7
 		})
+		initialSums := []int{6, 15, 0, 7}
 
-		// Use the actual SimpleSumFitnessEvaluator
+		// 1. Setup
 		fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		mutator := NewSimpleSwapMutator[int]()
+		selector, err := NewTournamentSelector[int](3, 1) // elitism of 1
+		require.NoError(t, err)
 
-		err := executor.RefreshFitness()
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
+		// 2. Refresh fitness
+		err = executor.RefreshFitness()
 		require.NoError(t, err)
 		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
 		assert.Equal(t, 15.0, executor.population.Individuals[1].Fitness)
 		assert.Equal(t, 0.0, executor.population.Individuals[2].Fitness)
 		assert.Equal(t, 7.0, executor.population.Individuals[3].Fitness)
+
+		bestSolution := executor.population.Individuals[1] // fitness 15
+
+		// 3. Perform selection
+		newPopulation, err := executor.PerformSelection()
+		require.NoError(t, err)
+		require.NotNil(t, newPopulation)
+		assert.Len(t, newPopulation.Individuals, 4)
+
+		// Check that the best solution was carried over by elitism
+		assert.Contains(t, newPopulation.Individuals, bestSolution)
+
+		// 4. Perform mutation
+		executor.population = newPopulation // Update executor's population
+		err = executor.PerformMutation()
+		require.NoError(t, err)
+
+		// 5. Verify mutation integrity
+		for i, individual := range executor.population.Individuals {
+			currentSum := 0
+			for _, gene := range individual.Chromosome {
+				currentSum += gene
+			}
+			// SimpleSwapMutator should not change the sum of genes
+			assert.Contains(t, initialSums, currentSum, "Sum of genes for individual %d changed after mutation", i)
+		}
 	})
 }
 
@@ -396,8 +459,10 @@ func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
 			fitnessValues: []float64{60.0, 150.0},
 			errorOnIndex:  -1,
 		}
+		mutator := &mockMutator[CustomInt]{}
+		selector := &mockSelector[CustomInt]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector)
 
 		err := executor.RefreshFitness()
 
@@ -430,6 +495,26 @@ func (m *mockMutator[T]) Mutate(chromosome *[]T) error {
 	return nil
 }
 
+// Mock selector for testing PerformSelection
+type mockSelector[T cmp.Ordered] struct {
+	// populationToReturn: the population to be returned on successful selection
+	populationToReturn *Population[T]
+	// errorOnIndex: -1 means no error; otherwise, return error on this call index
+	errorOnIndex int
+	callCount    int
+}
+
+var errMockSelection = errors.New("mock selection error")
+
+func (m *mockSelector[T]) Select(population *Population[T]) (*Population[T], error) {
+	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
+		m.callCount++
+		return nil, errMockSelection
+	}
+	m.callCount++
+	return m.populationToReturn, nil
+}
+
 func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 	t.Run("mutates all individuals using mutator", func(t *testing.T) {
 		population := createTestPopulation([][]int{
@@ -437,7 +522,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 			{4, 5, 6},
 		})
 
-		executor := NewGeneticAlgorithmExecutor[int](population, nil)
+		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: -1}, nil)
 		mm := &mockMutator[int]{errorOnIndex: -1}
 		executor.mutator = mm
 
@@ -455,7 +540,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 			{7, 8, 9},
 		})
 
-		executor := NewGeneticAlgorithmExecutor[int](population, nil)
+		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: 1}, nil)
 		mm := &mockMutator[int]{errorOnIndex: 1} // fail on second individual
 		executor.mutator = mm
 
@@ -472,21 +557,69 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 
 	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
 		// nil population
-		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil)
+		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, &mockMutator[int]{}, nil)
 		err := executorNil.PerformMutation()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// empty population
 		popFactory := NewPopulationFactory[int]()
 		emptyPop := popFactory.CreateEmptyPopulation()
-		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil)
+		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, &mockMutator[int]{}, nil)
 		err = executorEmpty.PerformMutation()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// population with nil Individuals slice
 		populationNilIndividuals := &Population[int]{}
-		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil)
+		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, &mockMutator[int]{}, nil)
 		err = executorNilIndividuals.PerformMutation()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+	})
+}
+
+func TestGeneticAlgorithmExecutor_PerformSelection(t *testing.T) {
+	t.Run("returns new population on successful selection", func(t *testing.T) {
+		originalPopulation := createTestPopulation([][]int{{1, 2}, {3, 4}})
+		expectedPopulation := createTestPopulation([][]int{{5, 6}, {7, 8}})
+
+		ms := &mockSelector[int]{populationToReturn: expectedPopulation, errorOnIndex: -1}
+		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms)
+
+		newPopulation, err := executor.PerformSelection()
+		require.NoError(t, err)
+		assert.Equal(t, expectedPopulation, newPopulation)
+		assert.Equal(t, 1, ms.callCount)
+	})
+
+	t.Run("returns error when selector fails", func(t *testing.T) {
+		originalPopulation := createTestPopulation([][]int{{1, 2}, {3, 4}})
+
+		ms := &mockSelector[int]{populationToReturn: nil, errorOnIndex: 0}
+		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms)
+
+		newPopulation, err := executor.PerformSelection()
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errMockSelection)
+		assert.Nil(t, newPopulation)
+		assert.Equal(t, 1, ms.callCount)
+	})
+
+	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
+		// nil population
+		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, nil, &mockSelector[int]{})
+		_, err := executorNil.PerformSelection()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+
+		// empty population
+		popFactory := NewPopulationFactory[int]()
+		emptyPop := popFactory.CreateEmptyPopulation()
+		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, nil, &mockSelector[int]{})
+		_, err = executorEmpty.PerformSelection()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+
+		// population with nil Individuals slice
+		populationNilIndividuals := &Population[int]{}
+		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, nil, &mockSelector[int]{})
+		_, err = executorNilIndividuals.PerformSelection()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
 }

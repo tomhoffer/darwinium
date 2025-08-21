@@ -8,12 +8,15 @@ type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
 	population       *Population[T]
 	fitnessEvaluator IFitnessEvaluator[T]
 	mutator          IMutator[T]
+	selector         ISelector[T]
 }
 
-func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T]) *GeneticAlgorithmExecutor[T] {
+func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T]) *GeneticAlgorithmExecutor[T] {
 	return &GeneticAlgorithmExecutor[T]{
 		population:       population,
 		fitnessEvaluator: fitnessEvaluator,
+		mutator:          mutator,
+		selector:         selector,
 	}
 }
 
@@ -43,4 +46,15 @@ func (e *GeneticAlgorithmExecutor[T]) PerformMutation() error {
 		}
 	}
 	return nil
+}
+
+func (e *GeneticAlgorithmExecutor[T]) PerformSelection() (*Population[T], error) {
+	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
+		return nil, ErrPopulationEmpty
+	}
+	newPopulation, err := e.selector.Select(e.population)
+	if err != nil {
+		return nil, err
+	}
+	return newPopulation, nil
 }
