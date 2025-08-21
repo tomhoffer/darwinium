@@ -7,6 +7,7 @@ import (
 type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
 	population       *Population[T]
 	fitnessEvaluator IFitnessEvaluator[T]
+	mutator          IMutator[T]
 }
 
 func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T]) *GeneticAlgorithmExecutor[T] {
@@ -27,6 +28,19 @@ func (e *GeneticAlgorithmExecutor[T]) RefreshFitness() error {
 			return err
 		}
 		e.population.Individuals[i].Fitness = fitness
+	}
+	return nil
+}
+
+func (e *GeneticAlgorithmExecutor[T]) PerformMutation() error {
+	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
+		return ErrPopulationEmpty
+	}
+	for i := range e.population.Individuals {
+		err := e.mutator.Mutate(&e.population.Individuals[i].Chromosome)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

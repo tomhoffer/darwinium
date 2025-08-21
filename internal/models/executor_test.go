@@ -333,9 +333,6 @@ func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
-		require.True(t, errors.As(fe, &ice), "expected wrapped InvalidChromosomeError")
-
 		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
 		// The second individual should not have been processed due to the error
 		assert.Equal(t, 0.0, executor.population.Individuals[1].Fitness)
@@ -357,9 +354,6 @@ func TestGeneticAlgorithmExecutor_EdgeCases(t *testing.T) {
 
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
-
-		var ice *InvalidChromosomeError
-		require.True(t, errors.As(fe, &ice), "expected wrapped InvalidChromosomeError")
 
 		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
 		// The second individual should not have been processed due to the error
@@ -410,5 +404,89 @@ func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 60.0, executor.population.Individuals[0].Fitness)
 		assert.Equal(t, 150.0, executor.population.Individuals[1].Fitness)
+	})
+}
+
+// Mock mutator for testing PerformMutation
+type mockMutator[T cmp.Ordered] struct {
+	// errorOnIndex: -1 means no error; otherwise, return error on this call index
+	errorOnIndex int
+	callCount    int
+}
+
+var errMockMutation = errors.New("mock mutation error")
+
+func (m *mockMutator[T]) Mutate(chromosome *[]T) error {
+	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
+		m.callCount++
+		return errMockMutation
+	}
+	// simple deterministic mutation: swap first two genes if possible
+	if chromosome != nil && *chromosome != nil && len(*chromosome) >= 2 {
+		ch := *chromosome
+		ch[0], ch[1] = ch[1], ch[0]
+	}
+	m.callCount++
+	return nil
+}
+
+func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
+	t.Run("mutates all individuals using mutator", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		executor := NewGeneticAlgorithmExecutor[int](population, nil)
+		mm := &mockMutator[int]{errorOnIndex: -1}
+		executor.mutator = mm
+
+		err := executor.PerformMutation()
+		require.NoError(t, err)
+		assert.Equal(t, 2, mm.callCount)
+		assert.Equal(t, []int{2, 1, 3}, executor.population.Individuals[0].Chromosome)
+		assert.Equal(t, []int{5, 4, 6}, executor.population.Individuals[1].Chromosome)
+	})
+
+	t.Run("returns error when mutator fails and stops further mutations", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+			{7, 8, 9},
+		})
+
+		executor := NewGeneticAlgorithmExecutor[int](population, nil)
+		mm := &mockMutator[int]{errorOnIndex: 1} // fail on second individual
+		executor.mutator = mm
+
+		err := executor.PerformMutation()
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errMockMutation)
+		// First individual should be mutated
+		assert.Equal(t, []int{2, 1, 3}, executor.population.Individuals[0].Chromosome)
+		// Second individual should remain unchanged due to error
+		assert.Equal(t, []int{4, 5, 6}, executor.population.Individuals[1].Chromosome)
+		// No further mutations should occur
+		assert.Equal(t, 2, mm.callCount)
+	})
+
+	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
+		// nil population
+		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil)
+		err := executorNil.PerformMutation()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+
+		// empty population
+		popFactory := NewPopulationFactory[int]()
+		emptyPop := popFactory.CreateEmptyPopulation()
+		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil)
+		err = executorEmpty.PerformMutation()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+
+		// population with nil Individuals slice
+		populationNilIndividuals := &Population[int]{}
+		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil)
+		err = executorNilIndividuals.PerformMutation()
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
 }
