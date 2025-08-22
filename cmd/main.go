@@ -10,7 +10,7 @@ import (
 const (
 	populationSize   = 100
 	chromosomeLength = 20
-	generations      = 50
+	generations      = 500
 	tournamentSize   = 5
 	elitismCount     = 1
 	mutationRate     = 0.01 // Per-gene mutation probability

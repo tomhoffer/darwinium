@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"fmt"
 	"math/rand"
+
+	progressbar "github.com/schollz/progressbar/v3"
 )
 
 type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
@@ -103,18 +105,23 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 // It performs fitness evaluation, selection, crossover, and mutation in each generation.
 // The method returns the final population and any error that occurred during execution.
 func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], error) {
+	bar := progressbar.Default(int64(generations))
 	for i := 0; i < generations; i++ {
+		err := bar.Add(1)
+		if err != nil {
+			return nil, err
+		}
+
 		// a. Refresh fitness for the current population
 		if err := e.RefreshFitness(); err != nil {
 			return nil, fmt.Errorf("failed to refresh fitness at generation %d: %w", i, err)
 		}
 
 		// b. Find and print the best fitness in the current generation
-		bestFitness, err := e.population.BestFitness()
+		_, err = e.population.BestFitness()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get best fitness at generation %d: %w", i, err)
 		}
-		fmt.Printf("Generation %d: Best Fitness = %.2f\n", i, bestFitness)
 
 		// c. Perform selection
 		selectedPopulation, err := e.PerformSelection()
