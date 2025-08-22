@@ -61,7 +61,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		require.NotNil(t, executor)
 		assert.Equal(t, population, executor.population)
@@ -79,7 +79,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		require.NotNil(t, executor)
 		assert.Len(t, executor.population.Individuals, 0)
@@ -96,7 +96,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 		floatSelector := &mockSelector[float64]{}
 		floatCrossover := &mockCrossover[float64]{}
 
-		floatExecutor := NewGeneticAlgorithmExecutor(floatPopulation, floatEvaluator, floatMutator, floatSelector, floatCrossover)
+		floatExecutor := NewGeneticAlgorithmExecutor(floatPopulation, floatEvaluator, floatMutator, floatSelector, floatCrossover, 10)
 		require.NotNil(t, floatExecutor)
 
 		// Test with string
@@ -109,7 +109,7 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 		stringSelector := &mockSelector[string]{}
 		stringCrossover := &mockCrossover[string]{}
 
-		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator, stringMutator, stringSelector, stringCrossover)
+		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator, stringMutator, stringSelector, stringCrossover, 10)
 		require.NotNil(t, stringExecutor)
 	})
 }
@@ -131,7 +131,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		// Verify initial fitness values are 0
 		for i, individual := range executor.population.Individuals {
@@ -164,7 +164,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -193,7 +193,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -216,7 +216,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
@@ -233,7 +233,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
@@ -250,7 +250,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -269,7 +269,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		// First refresh
 		err := executor.RefreshFitness()
@@ -301,7 +301,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 		selector := &mockSelector[float64]{}
 		crossover := &mockCrossover[float64]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -324,7 +324,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 		selector := &mockSelector[string]{}
 		crossover := &mockCrossover[string]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -347,7 +347,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 		selector := &mockSelector[uint8]{}
 		crossover := &mockCrossover[uint8]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -369,7 +369,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_EdgeCases(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -394,7 +394,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_EdgeCases(t *testing.T) {
 		selector := &mockSelector[int]{}
 		crossover := &mockCrossover[int]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -427,7 +427,7 @@ func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
 		require.NoError(t, err)
 		crossover := NewSinglePointCrossover[int]()
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		// 2. Refresh fitness
 		err = executor.RefreshFitness()
@@ -485,7 +485,7 @@ func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
 		selector := &mockSelector[CustomInt]{}
 		crossover := &mockCrossover[CustomInt]{}
 
-		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover)
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		err := executor.RefreshFitness()
 
@@ -556,7 +556,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 			{4, 5, 6},
 		})
 
-		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: -1}, nil, &mockCrossover[int]{})
+		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: -1}, nil, &mockCrossover[int]{}, 10)
 		mm := &mockMutator[int]{errorOnIndex: -1}
 		executor.mutator = mm
 
@@ -574,7 +574,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 			{7, 8, 9},
 		})
 
-		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: 1}, nil, &mockCrossover[int]{})
+		executor := NewGeneticAlgorithmExecutor[int](population, nil, &mockMutator[int]{errorOnIndex: 1}, nil, &mockCrossover[int]{}, 10)
 		mm := &mockMutator[int]{errorOnIndex: 1} // fail on second individual
 		executor.mutator = mm
 
@@ -591,20 +591,20 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 
 	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
 		// nil population
-		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{})
+		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
 		err := executorNil.PerformMutation()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// empty population
 		popFactory := NewPopulationFactory[int]()
 		emptyPop := popFactory.CreateEmptyPopulation()
-		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{})
+		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
 		err = executorEmpty.PerformMutation()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// population with nil Individuals slice
 		populationNilIndividuals := &Population[int]{}
-		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{})
+		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
 		err = executorNilIndividuals.PerformMutation()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
@@ -616,7 +616,7 @@ func TestGeneticAlgorithmExecutor_PerformSelection(t *testing.T) {
 		expectedPopulation := createTestPopulation([][]int{{5, 6}, {7, 8}})
 
 		ms := &mockSelector[int]{populationToReturn: expectedPopulation, errorOnIndex: -1}
-		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms, &mockCrossover[int]{})
+		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms, &mockCrossover[int]{}, 10)
 
 		newPopulation, err := executor.PerformSelection()
 		require.NoError(t, err)
@@ -628,7 +628,7 @@ func TestGeneticAlgorithmExecutor_PerformSelection(t *testing.T) {
 		originalPopulation := createTestPopulation([][]int{{1, 2}, {3, 4}})
 
 		ms := &mockSelector[int]{populationToReturn: nil, errorOnIndex: 0}
-		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms, &mockCrossover[int]{})
+		executor := NewGeneticAlgorithmExecutor[int](originalPopulation, nil, nil, ms, &mockCrossover[int]{}, 10)
 
 		newPopulation, err := executor.PerformSelection()
 		require.Error(t, err)
@@ -639,20 +639,20 @@ func TestGeneticAlgorithmExecutor_PerformSelection(t *testing.T) {
 
 	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
 		// nil population
-		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{})
+		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{}, 10)
 		_, err := executorNil.PerformSelection()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// empty population
 		popFactory := NewPopulationFactory[int]()
 		emptyPop := popFactory.CreateEmptyPopulation()
-		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{})
+		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{}, 10)
 		_, err = executorEmpty.PerformSelection()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// population with nil Individuals slice
 		populationNilIndividuals := &Population[int]{}
-		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{})
+		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, nil, &mockSelector[int]{}, &mockCrossover[int]{}, 10)
 		_, err = executorNilIndividuals.PerformSelection()
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
@@ -669,7 +669,7 @@ func TestPerformCrossover(t *testing.T) {
 				return []int{1}, []int{2}, nil
 			},
 		}
-		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover)
+		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover, 10)
 		offspring, err := executor.PerformCrossover()
 		require.NoError(t, err)
 		assert.Len(t, offspring.Individuals, 2)
@@ -686,7 +686,7 @@ func TestPerformCrossover(t *testing.T) {
 				return []int{1}, []int{2}, nil
 			},
 		}
-		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover)
+		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover, 10)
 		offspring, err := executor.PerformCrossover()
 		require.NoError(t, err)
 		assert.Len(t, offspring.Individuals, 3)
@@ -702,7 +702,7 @@ func TestPerformCrossover(t *testing.T) {
 				return nil, nil, NewCrossoverError("mock crossover error", assert.AnError)
 			},
 		}
-		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover)
+		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover, 10)
 		_, err := executor.PerformCrossover()
 		require.Error(t, err)
 
@@ -714,7 +714,7 @@ func TestPerformCrossover(t *testing.T) {
 	t.Run("empty population returns error", func(t *testing.T) {
 		pop := &Population[int]{}
 		crossover := &mockCrossover[int]{}
-		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover)
+		executor := NewGeneticAlgorithmExecutor(pop, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover, 10)
 		_, err := executor.PerformCrossover()
 		require.Error(t, err)
 		var ce *CrossoverError
@@ -724,7 +724,7 @@ func TestPerformCrossover(t *testing.T) {
 
 	t.Run("nil population returns error", func(t *testing.T) {
 		crossover := &mockCrossover[int]{}
-		executor := NewGeneticAlgorithmExecutor(nil, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover)
+		executor := NewGeneticAlgorithmExecutor(nil, &mockFitnessEvaluator[int]{}, &mockMutator[int]{}, &mockSelector[int]{}, crossover, 10)
 		_, err := executor.PerformCrossover()
 		require.Error(t, err)
 		var ce *CrossoverError

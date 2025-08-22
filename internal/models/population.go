@@ -11,6 +11,33 @@ type Population[T cmp.Ordered] struct {
 	Individuals []Solution[T]
 }
 
+// BestSolution finds and returns the individual with the highest fitness in the population.
+// If the population is empty, it returns an error.
+func (p *Population[T]) BestSolution() (*Solution[T], error) {
+	if p == nil || len(p.Individuals) == 0 {
+		return nil, ErrPopulationEmpty
+	}
+
+	best := p.Individuals[0]
+	for i := 1; i < len(p.Individuals); i++ {
+		if p.Individuals[i].Fitness > best.Fitness {
+			best = p.Individuals[i]
+		}
+	}
+
+	return &best, nil
+}
+
+// BestFitness returns the fitness of the best individual in the population.
+// If the population is empty, it returns an error.
+func (p *Population[T]) BestFitness() (float64, error) {
+	bestSolution, err := p.BestSolution()
+	if err != nil {
+		return 0, err
+	}
+	return bestSolution.Fitness, nil
+}
+
 // PopulationFactory provides factory methods for creating Population instances.
 // It supports generic types that implement the cmp.Ordered interface.
 type PopulationFactory[T cmp.Ordered] struct{}

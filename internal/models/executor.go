@@ -2,6 +2,7 @@ package models
 
 import (
 	"cmp"
+	"fmt"
 	"math/rand"
 )
 
@@ -11,15 +12,17 @@ type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
 	mutator          IMutator[T]
 	selector         ISelector[T]
 	crossover        ICrossover[T]
+	generations      int
 }
 
-func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T], crossover ICrossover[T]) *GeneticAlgorithmExecutor[T] {
+func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T], crossover ICrossover[T], generations int) *GeneticAlgorithmExecutor[T] {
 	return &GeneticAlgorithmExecutor[T]{
 		population:       population,
 		fitnessEvaluator: fitnessEvaluator,
 		mutator:          mutator,
 		selector:         selector,
 		crossover:        crossover,
+		generations:      generations,
 	}
 }
 
@@ -94,4 +97,44 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 	}
 
 	return offspringPopulation, nil
+}
+
+// Loop runs the genetic algorithm for the specified number of generations.
+// It performs fitness evaluation, selection, crossover, and mutation in each generation.
+// The method returns the final population and any error that occurred during execution.
+func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], error) {
+	for i := 0; i < generations; i++ {
+		// a. Refresh fitness for the current population
+		if err := e.RefreshFitness(); err != nil {
+			return nil, fmt.Errorf("failed to refresh fitness at generation %d: %w", i, err)
+		}
+
+		// b. Find and print the best fitness in the current generation
+		bestFitness, err := e.population.BestFitness()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get best fitness at generation %d: %w", i, err)
+		}
+		fmt.Printf("Generation %d: Best Fitness = %.2f\n", i, bestFitness)
+
+		// c. Perform selection
+		selectedPopulation, err := e.PerformSelection()
+		if err != nil {
+			return nil, fmt.Errorf("failed to perform selection at generation %d: %w", i, err)
+		}
+		e.population = selectedPopulation
+
+		// d. Perform crossover
+		offspringPopulation, err := e.PerformCrossover()
+		if err != nil {
+			return nil, fmt.Errorf("failed to perform crossover at generation %d: %w", i, err)
+		}
+		e.population = offspringPopulation
+
+		// e. Perform mutation
+		if err := e.PerformMutation(); err != nil {
+			return nil, fmt.Errorf("failed to perform mutation at generation %d: %w", i, err)
+		}
+	}
+
+	return e.population, nil
 }

@@ -22,11 +22,19 @@ type IMutator[T cmp.Ordered] interface {
 
 // SimpleSwapMutator performs a simple mutation by swapping two distinct genes
 // at randomly selected positions. This operation is valid for any ordered type.
-type SimpleSwapMutator[T cmp.Ordered] struct{}
+type SimpleSwapMutator[T cmp.Ordered] struct {
+	mutationRate float64
+}
 
 // NewSimpleSwapMutator creates and returns a new SimpleSwapMutator instance.
-func NewSimpleSwapMutator[T cmp.Ordered]() *SimpleSwapMutator[T] {
-	return &SimpleSwapMutator[T]{}
+// If no mutationRate is provided, it defaults to 0.1 (10%).
+func NewSimpleSwapMutator[T cmp.Ordered](mutationRate ...float64) *SimpleSwapMutator[T] {
+	defaultRate := 0.01
+	if len(mutationRate) > 0 {
+		defaultRate = mutationRate[0]
+	}
+
+	return &SimpleSwapMutator[T]{mutationRate: defaultRate}
 }
 
 // Mutate swaps two distinct positions in the chromosome. The mutation is performed in place.
@@ -38,6 +46,9 @@ func (s SimpleSwapMutator[T]) Mutate(chromosome *[]T) error {
 	}
 	if len(*chromosome) < 2 {
 		return NewMutationError("cannot mutate chromosome", NewInvalidChromosomeError("chromosome must contain at least 2 genes", nil))
+	}
+	if rand.Float64() > s.mutationRate {
+		return nil
 	}
 
 	n := len(*chromosome)

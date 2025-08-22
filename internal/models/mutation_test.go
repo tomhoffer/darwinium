@@ -10,7 +10,7 @@ import (
 
 // TestSimpleSwapMutator_Int tests the SimpleSwapMutator with integer chromosomes.
 func TestSimpleSwapMutator_Int(t *testing.T) {
-	mut := NewSimpleSwapMutator[int]()
+	mut := NewSimpleSwapMutator[int](1.0)
 
 	t.Run("swaps two positions", func(t *testing.T) {
 		chromosome := []int{1, 2, 3, 4, 5}
@@ -70,9 +70,53 @@ func TestSimpleSwapMutator_Int(t *testing.T) {
 	})
 }
 
+// TestSimpleSwapMutator_MutationRate tests the mutation rate functionality.
+func TestSimpleSwapMutator_MutationRate(t *testing.T) {
+	t.Run("default mutation rate is 0.01", func(t *testing.T) {
+		mut := NewSimpleSwapMutator[int]()
+		assert.Equal(t, 0.01, mut.mutationRate)
+	})
+
+	t.Run("custom mutation rate is set correctly", func(t *testing.T) {
+		mut := NewSimpleSwapMutator[int](0.5)
+		assert.Equal(t, 0.5, mut.mutationRate)
+	})
+
+	t.Run("high mutation rate always mutates", func(t *testing.T) {
+		mut := NewSimpleSwapMutator[int](1.0) // 100% mutation rate
+		chromosome := []int{1, 2, 3, 4, 5}
+		original := append([]int(nil), chromosome...)
+
+		err := mut.Mutate(&chromosome)
+		require.NoError(t, err)
+
+		// With 100% mutation rate, chromosome should always be mutated
+		changed := false
+		for i := range chromosome {
+			if chromosome[i] != original[i] {
+				changed = true
+				break
+			}
+		}
+		assert.True(t, changed, "chromosome should have been mutated with 100% mutation rate")
+	})
+
+	t.Run("zero mutation rate never mutates", func(t *testing.T) {
+		mut := NewSimpleSwapMutator[int](0.0) // 0% mutation rate
+		chromosome := []int{1, 2, 3, 4, 5}
+		original := append([]int(nil), chromosome...)
+
+		err := mut.Mutate(&chromosome)
+		require.NoError(t, err)
+
+		// With 0% mutation rate, chromosome should never be mutated
+		assert.Equal(t, original, chromosome, "chromosome should not have been mutated with 0% mutation rate")
+	})
+}
+
 // TestSimpleSwapMutator_String tests the SimpleSwapMutator with string chromosomes.
 func TestSimpleSwapMutator_String(t *testing.T) {
-	mut := NewSimpleSwapMutator[string]()
+	mut := NewSimpleSwapMutator[string](1.0)
 
 	t.Run("swaps two positions", func(t *testing.T) {
 		chromosome := []string{"a", "b", "c", "d"}
