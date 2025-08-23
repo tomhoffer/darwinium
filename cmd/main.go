@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	populationSize   = 100
+	populationSize   = 100000
 	chromosomeLength = 20
 	generations      = 500
 	tournamentSize   = 5
@@ -16,6 +16,7 @@ const (
 	mutationRate     = 0.01 // Per-gene mutation probability
 	geneMin          = -100
 	geneMax          = 100
+	numWorkers       = -1
 )
 
 // Custom chromosome type
@@ -49,7 +50,7 @@ func main() {
 	population := generateRandomPopulation(populationFactory, solutionFactory)
 
 	// 3. Instantiate the GeneticAlgorithmExecutor
-	executor := models.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations)
+	executor := models.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations, numWorkers)
 
 	// 4. Run the GA loop
 	finalPopulation, err := executor.Loop(generations)

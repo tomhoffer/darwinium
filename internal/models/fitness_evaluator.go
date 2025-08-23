@@ -3,6 +3,7 @@ package models
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 
 	"github.com/tomhoffer/darwinium/internal/utils"
@@ -15,12 +16,13 @@ type IFitnessEvaluator[T cmp.Ordered] interface {
 	// Higher fitness values typically indicate better solutions.
 	//
 	// Parameters:
+	//   - ctx: Context for cancellation and timeout
 	//   - chromosome: The genetic material to evaluate
 	//
 	// Returns:
 	//   - fitness: The calculated fitness value
 	//   - error: Any error that occurred during evaluation
-	Evaluate(chromosome *[]T) (float64, error)
+	Evaluate(ctx context.Context, chromosome *[]T) (float64, error)
 }
 
 // SimpleSumFitnessEvaluator implements a basic fitness evaluator that calculates
@@ -38,12 +40,19 @@ func NewSimpleSumFitnessEvaluator[T cmp.Ordered]() *SimpleSumFitnessEvaluator[T]
 // This method implements the IFitnessEvaluator interface.
 //
 // Parameters:
+//   - ctx: Context for cancellation and timeout
 //   - chromosome: The genetic material to evaluate
 //
 // Returns:
 //   - float64: The sum of all chromosome values as the fitness
 //   - error: Any error that occurred during conversion or calculation
-func (s SimpleSumFitnessEvaluator[T]) Evaluate(chromosome *[]T) (float64, error) {
+func (s SimpleSumFitnessEvaluator[T]) Evaluate(ctx context.Context, chromosome *[]T) (float64, error) {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return 0.0, NewFitnessEvaluationError("context cancelled", ctx.Err())
+	default:
+	}
 
 	if len(*chromosome) == 0 {
 		return 0.0, NewFitnessEvaluationError("cannot calculate fitness", NewInvalidChromosomeError("empty chromosome found", nil))
@@ -51,6 +60,13 @@ func (s SimpleSumFitnessEvaluator[T]) Evaluate(chromosome *[]T) (float64, error)
 
 	var sum float64
 	for _, val := range *chromosome {
+		// Check for context cancellation in the loop
+		select {
+		case <-ctx.Done():
+			return 0.0, NewFitnessEvaluationError("context cancelled", ctx.Err())
+		default:
+		}
+
 		converted, err := utils.ConvertToFloat64(val)
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid chromosome value %v", val)

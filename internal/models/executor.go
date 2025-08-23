@@ -2,10 +2,12 @@ package models
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"math/rand"
 
 	progressbar "github.com/schollz/progressbar/v3"
+	"golang.org/x/sync/errgroup"
 )
 
 type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
@@ -15,9 +17,16 @@ type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
 	selector         ISelector[T]
 	crossover        ICrossover[T]
 	generations      int
+	numWorkers       int
 }
 
-func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T], crossover ICrossover[T], generations int) *GeneticAlgorithmExecutor[T] {
+func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T], crossover ICrossover[T], generations int, numWorkers ...int) *GeneticAlgorithmExecutor[T] {
+	// Default to 1 worker if not specified
+	workerCount := 1
+	if len(numWorkers) > 0 {
+		workerCount = numWorkers[0]
+	}
+
 	return &GeneticAlgorithmExecutor[T]{
 		population:       population,
 		fitnessEvaluator: fitnessEvaluator,
@@ -25,6 +34,7 @@ func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitne
 		selector:         selector,
 		crossover:        crossover,
 		generations:      generations,
+		numWorkers:       workerCount,
 	}
 }
 
@@ -33,12 +43,29 @@ func (e *GeneticAlgorithmExecutor[T]) RefreshFitness() error {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
 		return ErrPopulationEmpty
 	}
+	
+	// Run fitness evaluation in goroutines with limited concurrency
+	g, ctx := errgroup.WithContext(context.Background())
+
+	if e.numWorkers != -1 {
+		g.SetLimit(e.numWorkers)
+	}
+
 	for i := range e.population.Individuals {
-		fitness, err := e.fitnessEvaluator.Evaluate(&e.population.Individuals[i].Chromosome)
-		if err != nil {
-			return err
-		}
-		e.population.Individuals[i].Fitness = fitness
+		individualIndex := i // explicit capture
+		g.Go(func() error {
+			fitness, err := e.fitnessEvaluator.Evaluate(ctx, &e.population.Individuals[individualIndex].Chromosome)
+			if err != nil {
+				return err
+			}
+			e.population.Individuals[individualIndex].Fitness = fitness
+			return nil
+		})
+	}
+
+	// Wait for all goroutines to finish
+	if err := g.Wait(); err != nil {
+		return NewFitnessEvaluationError("failed to evaluate fitness", err)
 	}
 	return nil
 }
@@ -143,6 +170,11 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], err
 			return nil, fmt.Errorf("failed to perform mutation at generation %d: %w", i, err)
 		}
 	}
+	// f. Re-evaluate fitness for the new population (after crossover + mutation)
+	if err := e.RefreshFitness(); err != nil {
+		return nil, fmt.Errorf("failed to refresh fitness: %w", err)
+	}
+
 	fmt.Println("\nFinished genetic algorithm!")
 	return e.population, nil
 }

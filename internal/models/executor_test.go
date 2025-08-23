@@ -2,6 +2,7 @@ package models
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"testing"
 
@@ -16,7 +17,14 @@ type mockFitnessEvaluator[T cmp.Ordered] struct {
 	callCount     int
 }
 
-func (m *mockFitnessEvaluator[T]) Evaluate(chromosome *[]T) (float64, error) {
+func (m *mockFitnessEvaluator[T]) Evaluate(ctx context.Context, chromosome *[]T) (float64, error) {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return 0.0, ctx.Err()
+	default:
+	}
+
 	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
 		m.callCount++
 		return 0, ErrFitnessEvaluationFailed
@@ -112,10 +120,41 @@ func TestNewGeneticAlgorithmExecutor(t *testing.T) {
 		stringExecutor := NewGeneticAlgorithmExecutor(stringPopulation, stringEvaluator, stringMutator, stringSelector, stringCrossover, 10)
 		require.NotNil(t, stringExecutor)
 	})
+
+	t.Run("creates executor with various numWorkers values", func(t *testing.T) {
+		population := createTestPopulation([][]int{{1, 2}, {3, 4}})
+		fitnessEvaluator := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{10.0, 20.0},
+			errorOnIndex:  -1,
+		}
+		mutator := &mockMutator[int]{}
+		selector := &mockSelector[int]{}
+		crossover := &mockCrossover[int]{}
+
+		// Test with default numWorkers
+		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
+		require.NotNil(t, executor)
+		assert.Equal(t, 1, executor.numWorkers, "Should default to 1 worker")
+
+		// Test with explicit numWorkers
+		executor = NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10, 4)
+		require.NotNil(t, executor)
+		assert.Equal(t, 4, executor.numWorkers, "Should set numWorkers to specified value")
+
+		// Test with 0 workers (edge case)
+		executorZero := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10, 0)
+		require.NotNil(t, executorZero)
+		assert.Equal(t, 0, executorZero.numWorkers, "Should set numWorkers to 0 when specified")
+
+		// Test with negative workers (edge case)
+		executorNeg := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10, -1)
+		require.NotNil(t, executorNeg)
+		assert.Equal(t, -1, executorNeg.numWorkers, "Should set numWorkers to -1 when specified")
+	})
 }
 
 func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
-	t.Run("successfully refreshes fitness for all individuals", func(t *testing.T) {
+	t.Run("successfully refreshes fitness for all individuals with default workers", func(t *testing.T) {
 		population := createTestPopulation([][]int{
 			{1, 2, 3},
 			{4, 5, 6},
@@ -744,7 +783,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 
 		// Create mock components that track call order and count
 		mockFitness := &mockFitnessEvaluator[int]{
-			fitnessValues: []float64{6.0, 15.0, 24.0, 8.0, 16.0, 25.0}, // Values for two iterations
+			fitnessValues: []float64{6.0, 15.0, 24.0, 8.0, 16.0, 25.0, 10.0, 20.0, 30.0}, // Values for 2 iterations (6) + final evaluation (3)
 			errorOnIndex:  -1,
 		}
 
@@ -768,8 +807,11 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		require.NotNil(t, resultPopulation)
 
 		// Verify that fitness evaluation was called for each iteration
-		// First iteration: 3 individuals, Second iteration: 3 individuals
-		assert.Equal(t, 6, mockFitness.callCount, "Fitness evaluator should be called 6 times (3 individuals × 2 iterations)")
+		// First iteration: 3 individuals (initial fitness)
+		// Second iteration: 3 individuals (initial fitness)
+		// Final call: 3 individuals (after all generations complete)
+		// Total: 9 calls
+		assert.Equal(t, 9, mockFitness.callCount, "Fitness evaluator should be called 9 times (3 individuals × 2 iterations + 3 individuals final evaluation)")
 
 		// Verify that mutation was called for each iteration
 		// First iteration: 3 individuals, Second iteration: 3 individuals
