@@ -963,3 +963,38 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		assert.Equal(t, 0, mockSelector.callCount, "Selector should not be called")
 	})
 }
+
+// BenchmarkExecutor_Loop benchmarks the Loop method with real dependencies
+func BenchmarkExecutor_Loop(b *testing.B) {
+	populationSize := 1000
+	chromosomeLength := 100
+	generations := 10
+	tournamentSize := 3
+
+	// Use real genetic algorithm components
+	fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
+	mutator := NewSimpleSwapMutator[int](0.01)                    // 1% mutation rate
+	selector, _ := NewTournamentSelector[int](tournamentSize, 10) // 10 elitism
+	crossover := NewSinglePointCrossover[int]()
+
+	// Create executor with real components
+	executor := NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, generations)
+
+	// Pre-create all populations to avoid timing them
+	populations := make([]*Population[int], b.N)
+	for i := 0; i < b.N; i++ {
+		populations[i] = createBenchmarkPopulation(populationSize, chromosomeLength)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Just assign the pre-created population (no creation, no timing)
+		executor.population = populations[i]
+
+		// Run the genetic algorithm loop (this IS timed)
+		_, err := executor.Loop(generations)
+		if err != nil {
+			b.Fatalf("Loop failed: %v", err)
+		}
+	}
+}
