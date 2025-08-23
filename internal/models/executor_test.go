@@ -177,7 +177,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 			assert.Equal(t, 0.0, individual.Fitness, "Individual %d should start with 0 fitness", i)
 		}
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, len(expectedFitness), fitnessEvaluator.callCount)
@@ -205,7 +205,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		assert.ErrorIs(t, err, ErrFitnessEvaluationFailed)
 
@@ -234,7 +234,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		assert.ErrorIs(t, err, ErrFitnessEvaluationFailed)
 		assert.Equal(t, 1, fitnessEvaluator.callCount)
@@ -257,7 +257,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 		assert.Equal(t, 0, fitnessEvaluator.callCount)
 	})
@@ -274,7 +274,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 		assert.Equal(t, 0, fitnessEvaluator.callCount)
 	})
@@ -291,7 +291,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, 1, fitnessEvaluator.callCount)
@@ -311,13 +311,13 @@ func TestGeneticAlgorithmExecutor_RefreshFitness(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		// First refresh
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 10.0, executor.population.Individuals[0].Fitness)
 		assert.Equal(t, 20.0, executor.population.Individuals[1].Fitness)
 
 		// Second refresh - should update with new values
-		err = executor.RefreshFitness()
+		err = executor.RefreshFitness(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 15.0, executor.population.Individuals[0].Fitness)
 		assert.Equal(t, 25.0, executor.population.Individuals[1].Fitness)
@@ -342,7 +342,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, 11.11, executor.population.Individuals[0].Fitness)
@@ -365,7 +365,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, 100.0, executor.population.Individuals[0].Fitness)
@@ -388,7 +388,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_WithDifferentTypes(t *testing.T
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
@@ -410,7 +410,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_EdgeCases(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.Error(t, err)
 
@@ -435,7 +435,7 @@ func TestGeneticAlgorithmExecutor_RefreshFitness_EdgeCases(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.Error(t, err)
 
@@ -469,7 +469,7 @@ func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
 		// 2. Refresh fitness
-		err = executor.RefreshFitness()
+		err = executor.RefreshFitness(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 6.0, executor.population.Individuals[0].Fitness)
 		assert.Equal(t, 15.0, executor.population.Individuals[1].Fitness)
@@ -526,7 +526,7 @@ func TestGeneticAlgorithmExecutor_CustomTypes(t *testing.T) {
 
 		executor := NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossover, 10)
 
-		err := executor.RefreshFitness()
+		err := executor.RefreshFitness(context.Background())
 
 		require.NoError(t, err)
 		assert.Equal(t, 60.0, executor.population.Individuals[0].Fitness)
@@ -800,7 +800,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
 
 		// Execute the loop
-		resultPopulation, err := executor.Loop(2)
+		resultPopulation, err := executor.Loop(context.Background(), 2)
 
 		// Verify no errors occurred
 		require.NoError(t, err)
@@ -849,7 +849,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
 
 		// Execute the loop - should fail immediately during fitness evaluation
-		resultPopulation, err := executor.Loop(2)
+		resultPopulation, err := executor.Loop(context.Background(), 2)
 
 		// Verify error occurred
 		require.Error(t, err)
@@ -888,7 +888,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
 
 		// Execute the loop - should fail during first iteration
-		resultPopulation, err := executor.Loop(2)
+		resultPopulation, err := executor.Loop(context.Background(), 2)
 
 		// Verify error occurred
 		require.Error(t, err)
@@ -926,7 +926,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
 
 		// Execute the loop - should fail during first iteration
-		resultPopulation, err := executor.Loop(2)
+		resultPopulation, err := executor.Loop(context.Background(), 2)
 
 		// Verify error occurred
 		require.Error(t, err)
@@ -962,7 +962,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(emptyPopulation, mockFitness, mockMutator, mockSelector, mockCrossover, 1)
 
 		// Execute the loop - should fail immediately
-		resultPopulation, err := executor.Loop(1)
+		resultPopulation, err := executor.Loop(context.Background(), 1)
 
 		// Verify error occurred
 		require.Error(t, err)
@@ -992,7 +992,7 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 		executor := NewGeneticAlgorithmExecutor(nil, mockFitness, mockMutator, mockSelector, mockCrossover, 1)
 
 		// Execute the loop - should fail immediately
-		resultPopulation, err := executor.Loop(1)
+		resultPopulation, err := executor.Loop(context.Background(), 1)
 
 		// Verify error occurred
 		require.Error(t, err)
@@ -1034,7 +1034,7 @@ func BenchmarkExecutor_Loop(b *testing.B) {
 		executor.population = populations[i]
 
 		// Run the genetic algorithm loop (this IS timed)
-		_, err := executor.Loop(generations)
+		_, err := executor.Loop(context.Background(), generations)
 		if err != nil {
 			b.Fatalf("Loop failed: %v", err)
 		}

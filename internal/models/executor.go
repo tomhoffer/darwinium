@@ -38,14 +38,13 @@ func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitne
 	}
 }
 
-func (e *GeneticAlgorithmExecutor[T]) RefreshFitness() error {
-
+func (e *GeneticAlgorithmExecutor[T]) RefreshFitness(ctx context.Context) error {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
 		return ErrPopulationEmpty
 	}
-	
+
 	// Run fitness evaluation in goroutines with limited concurrency
-	g, ctx := errgroup.WithContext(context.Background())
+	g, gCtx := errgroup.WithContext(ctx)
 
 	if e.numWorkers != -1 {
 		g.SetLimit(e.numWorkers)
@@ -54,7 +53,7 @@ func (e *GeneticAlgorithmExecutor[T]) RefreshFitness() error {
 	for i := range e.population.Individuals {
 		individualIndex := i // explicit capture
 		g.Go(func() error {
-			fitness, err := e.fitnessEvaluator.Evaluate(ctx, &e.population.Individuals[individualIndex].Chromosome)
+			fitness, err := e.fitnessEvaluator.Evaluate(gCtx, &e.population.Individuals[individualIndex].Chromosome)
 			if err != nil {
 				return err
 			}
@@ -131,7 +130,7 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 // Loop runs the genetic algorithm for the specified number of generations.
 // It performs fitness evaluation, selection, crossover, and mutation in each generation.
 // The method returns the final population and any error that occurred during execution.
-func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], error) {
+func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int) (*Population[T], error) {
 	bar := progressbar.Default(int64(generations))
 	fmt.Println("Starting genetic algorithm...")
 	for i := 0; i < generations; i++ {
@@ -141,7 +140,7 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], err
 		}
 
 		// a. Refresh fitness for the current population
-		if err := e.RefreshFitness(); err != nil {
+		if err := e.RefreshFitness(ctx); err != nil {
 			return nil, fmt.Errorf("failed to refresh fitness at generation %d: %w", i, err)
 		}
 
@@ -171,7 +170,7 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], err
 		}
 	}
 	// f. Re-evaluate fitness for the new population (after crossover + mutation)
-	if err := e.RefreshFitness(); err != nil {
+	if err := e.RefreshFitness(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh fitness: %w", err)
 	}
 

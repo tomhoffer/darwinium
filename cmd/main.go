@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
@@ -53,7 +54,8 @@ func main() {
 	executor := models.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations, numWorkers)
 
 	// 4. Run the GA loop
-	finalPopulation, err := executor.Loop(generations)
+	ctx := context.Background()
+	finalPopulation, err := executor.Loop(ctx, generations)
 	if err != nil {
 		panic(fmt.Sprintf("genetic algorithm failed: %v", err))
 	}
