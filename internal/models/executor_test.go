@@ -732,3 +732,234 @@ func TestPerformCrossover(t *testing.T) {
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
 }
+
+func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
+	t.Run("executes all genetic algorithm steps correctly", func(t *testing.T) {
+		// Create a population with known fitness values
+		population := createTestPopulation([][]int{
+			{1, 2, 3}, // Sum: 6
+			{4, 5, 6}, // Sum: 15
+			{7, 8, 9}, // Sum: 24
+		})
+
+		// Create mock components that track call order and count
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{6.0, 15.0, 24.0, 8.0, 16.0, 25.0}, // Values for two iterations
+			errorOnIndex:  -1,
+		}
+
+		mockMutator := &mockMutator[int]{errorOnIndex: -1}
+
+		// Mock selector that returns the same population to maintain size
+		mockSelector := &mockSelector[int]{
+			populationToReturn: population,
+			errorOnIndex:       -1,
+		}
+		mockCrossover := &mockCrossover[int]{}
+
+		// Create executor with mocked components
+		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
+
+		// Execute the loop
+		resultPopulation, err := executor.Loop(2)
+
+		// Verify no errors occurred
+		require.NoError(t, err)
+		require.NotNil(t, resultPopulation)
+
+		// Verify that fitness evaluation was called for each iteration
+		// First iteration: 3 individuals, Second iteration: 3 individuals
+		assert.Equal(t, 6, mockFitness.callCount, "Fitness evaluator should be called 6 times (3 individuals × 2 iterations)")
+
+		// Verify that mutation was called for each iteration
+		// First iteration: 3 individuals, Second iteration: 3 individuals
+		assert.Equal(t, 6, mockMutator.callCount, "Mutator should be called 6 times (3 individuals × 2 iterations)")
+
+		// Verify that selection was called for each iteration
+		assert.Equal(t, 2, mockSelector.callCount, "Selector should be called 2 times (once per iteration)")
+
+		// Verify that crossover was called for each iteration
+		// This would need a more sophisticated mock to track, but we can verify the population structure
+		assert.Len(t, executor.population.Individuals, 3, "Population should maintain its size through iterations")
+	})
+
+	t.Run("stops execution when fitness evaluation fails", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		// Mock fitness evaluator that fails on the first call
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{6.0}, // Only one value before failure
+			errorOnIndex:  0,              // Fail on 1st call
+		}
+
+		mockMutator := &mockMutator[int]{errorOnIndex: -1}
+
+		// Mock selector that returns the same population to maintain size
+		mockSelector := &mockSelector[int]{
+			populationToReturn: population,
+			errorOnIndex:       -1,
+		}
+		mockCrossover := &mockCrossover[int]{}
+
+		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
+
+		// Execute the loop - should fail immediately during fitness evaluation
+		resultPopulation, err := executor.Loop(2)
+
+		// Verify error occurred
+		require.Error(t, err)
+		assert.Nil(t, resultPopulation)
+		assert.ErrorIs(t, err, ErrFitnessEvaluationFailed)
+
+		// Verify that fitness evaluation was called once before failing
+		assert.Equal(t, 1, mockFitness.callCount, "Fitness evaluator should be called 1 time before failing")
+
+		// Verify that no other components were called due to early failure
+		assert.Equal(t, 0, mockMutator.callCount, "Mutator should not be called due to fitness failure")
+		assert.Equal(t, 0, mockSelector.callCount, "Selector should not be called due to fitness failure")
+	})
+
+	t.Run("stops execution when mutation fails", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{6.0, 15.0},
+			errorOnIndex:  -1,
+		}
+
+		// Mock mutator that fails on the first call
+		mockMutator := &mockMutator[int]{errorOnIndex: 0} // Fail on 1st call
+
+		// Mock selector that returns the same population to maintain size
+		mockSelector := &mockSelector[int]{
+			populationToReturn: population,
+			errorOnIndex:       -1,
+		}
+		mockCrossover := &mockCrossover[int]{}
+
+		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
+
+		// Execute the loop - should fail during first iteration
+		resultPopulation, err := executor.Loop(2)
+
+		// Verify error occurred
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errMockMutation)
+		assert.Nil(t, resultPopulation)
+
+		// Verify that fitness evaluation was called for first iteration
+		assert.Equal(t, 2, mockFitness.callCount, "Fitness evaluator should be called 2 times (first iteration)")
+
+		// Verify that mutation was called once before failing
+		assert.Equal(t, 1, mockMutator.callCount, "Mutator should be called 1 time before failing")
+
+		// Verify that selection was called once before mutation failure
+		assert.Equal(t, 1, mockSelector.callCount, "Selector should be called 1 time before mutation failure")
+	})
+
+	t.Run("stops execution when selection fails", func(t *testing.T) {
+		population := createTestPopulation([][]int{
+			{1, 2, 3},
+			{4, 5, 6},
+		})
+
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{6.0, 15.0},
+			errorOnIndex:  -1,
+		}
+
+		mockMutator := &mockMutator[int]{errorOnIndex: -1}
+
+		// Mock selector that fails on the first call
+		mockSelector := &mockSelector[int]{errorOnIndex: 0} // Fail on 1st call
+
+		mockCrossover := &mockCrossover[int]{}
+
+		executor := NewGeneticAlgorithmExecutor(population, mockFitness, mockMutator, mockSelector, mockCrossover, 2)
+
+		// Execute the loop - should fail during first iteration
+		resultPopulation, err := executor.Loop(2)
+
+		// Verify error occurred
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errMockSelection)
+		assert.Nil(t, resultPopulation)
+
+		// Verify that fitness evaluation was called for first iteration
+		assert.Equal(t, 2, mockFitness.callCount, "Fitness evaluator should be called 2 times (first iteration)")
+
+		// Verify that mutation was not called due to selection failure
+		assert.Equal(t, 0, mockMutator.callCount, "Mutator should not be called due to selection failure")
+
+		// Verify that selection was called once before failing
+		assert.Equal(t, 1, mockSelector.callCount, "Selector should be called 1 time before failing")
+	})
+
+	t.Run("handles empty population", func(t *testing.T) {
+		emptyPopulation := createTestPopulation([][]int{})
+
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{},
+			errorOnIndex:  -1,
+		}
+		mockMutator := &mockMutator[int]{errorOnIndex: -1}
+
+		// Mock selector that returns the same population to maintain size
+		mockSelector := &mockSelector[int]{
+			populationToReturn: emptyPopulation,
+			errorOnIndex:       -1,
+		}
+		mockCrossover := &mockCrossover[int]{}
+
+		executor := NewGeneticAlgorithmExecutor(emptyPopulation, mockFitness, mockMutator, mockSelector, mockCrossover, 1)
+
+		// Execute the loop - should fail immediately
+		resultPopulation, err := executor.Loop(1)
+
+		// Verify error occurred
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+		assert.Nil(t, resultPopulation)
+
+		// Verify that no components were called
+		assert.Equal(t, 0, mockFitness.callCount, "Fitness evaluator should not be called")
+		assert.Equal(t, 0, mockMutator.callCount, "Mutator should not be called")
+		assert.Equal(t, 0, mockSelector.callCount, "Selector should not be called")
+	})
+
+	t.Run("handles nil population", func(t *testing.T) {
+		mockFitness := &mockFitnessEvaluator[int]{
+			fitnessValues: []float64{},
+			errorOnIndex:  -1,
+		}
+		mockMutator := &mockMutator[int]{errorOnIndex: -1}
+
+		// Mock selector that returns nil population (will cause error)
+		mockSelector := &mockSelector[int]{
+			populationToReturn: nil,
+			errorOnIndex:       -1,
+		}
+		mockCrossover := &mockCrossover[int]{}
+
+		executor := NewGeneticAlgorithmExecutor(nil, mockFitness, mockMutator, mockSelector, mockCrossover, 1)
+
+		// Execute the loop - should fail immediately
+		resultPopulation, err := executor.Loop(1)
+
+		// Verify error occurred
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrPopulationEmpty)
+		assert.Nil(t, resultPopulation)
+
+		// Verify that no components were called
+		assert.Equal(t, 0, mockFitness.callCount, "Fitness evaluator should not be called")
+		assert.Equal(t, 0, mockMutator.callCount, "Mutator should not be called")
+		assert.Equal(t, 0, mockSelector.callCount, "Selector should not be called")
+	})
+}

@@ -52,7 +52,6 @@ func main() {
 	executor := models.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations)
 
 	// 4. Run the GA loop
-	fmt.Println("Starting genetic algorithm...")
 	finalPopulation, err := executor.Loop(generations)
 	if err != nil {
 		panic(fmt.Sprintf("genetic algorithm failed: %v", err))
@@ -64,7 +63,6 @@ func main() {
 		panic(fmt.Sprintf("failed to get best solution: %v", err))
 	}
 
-	fmt.Println("\nFinished genetic algorithm!")
 	fmt.Printf("Best solution found with fitness %.2f:\n", bestSolution.Fitness)
 	fmt.Printf("Chromosome: %v\n", bestSolution.Chromosome)
 }

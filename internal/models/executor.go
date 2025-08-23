@@ -106,6 +106,7 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 // The method returns the final population and any error that occurred during execution.
 func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], error) {
 	bar := progressbar.Default(int64(generations))
+	fmt.Println("Starting genetic algorithm...")
 	for i := 0; i < generations; i++ {
 		err := bar.Add(1)
 		if err != nil {
@@ -142,6 +143,6 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(generations int) (*Population[T], err
 			return nil, fmt.Errorf("failed to perform mutation at generation %d: %w", i, err)
 		}
 	}
-
+	fmt.Println("\nFinished genetic algorithm!")
 	return e.population, nil
 }
