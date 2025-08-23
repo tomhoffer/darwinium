@@ -504,7 +504,7 @@ func TestGeneticAlgorithmExecutor_Integration(t *testing.T) {
 		assert.Len(t, crossoverPopulation.Individuals, 4)
 
 		// 6. Perform mutation
-		err = executor.PerformMutation()
+		err = executor.PerformMutation(context.Background())
 		require.NoError(t, err)
 	})
 }
@@ -543,7 +543,14 @@ type mockMutator[T cmp.Ordered] struct {
 
 var errMockMutation = errors.New("mock mutation error")
 
-func (m *mockMutator[T]) Mutate(chromosome *[]T) error {
+func (m *mockMutator[T]) Mutate(ctx context.Context, chromosome *[]T) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return errMockMutation
+	default:
+	}
+
 	if m.errorOnIndex >= 0 && m.callCount == m.errorOnIndex {
 		m.callCount++
 		return errMockMutation
@@ -555,6 +562,10 @@ func (m *mockMutator[T]) Mutate(chromosome *[]T) error {
 	}
 	m.callCount++
 	return nil
+}
+
+func (m *mockMutator[T]) reset() {
+	m.callCount = 0
 }
 
 // Mock selector for testing PerformSelection
@@ -599,7 +610,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 		mm := &mockMutator[int]{errorOnIndex: -1}
 		executor.mutator = mm
 
-		err := executor.PerformMutation()
+		err := executor.PerformMutation(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, 2, mm.callCount)
 		assert.Equal(t, []int{2, 1, 3}, executor.population.Individuals[0].Chromosome)
@@ -617,7 +628,7 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 		mm := &mockMutator[int]{errorOnIndex: 1} // fail on second individual
 		executor.mutator = mm
 
-		err := executor.PerformMutation()
+		err := executor.PerformMutation(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, errMockMutation)
 		// First individual should be mutated
@@ -631,20 +642,20 @@ func TestGeneticAlgorithmExecutor_PerformMutation(t *testing.T) {
 	t.Run("returns ErrPopulationEmpty for nil or empty population", func(t *testing.T) {
 		// nil population
 		executorNil := NewGeneticAlgorithmExecutor[int](nil, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
-		err := executorNil.PerformMutation()
+		err := executorNil.PerformMutation(context.Background())
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// empty population
 		popFactory := NewPopulationFactory[int]()
 		emptyPop := popFactory.CreateEmptyPopulation()
 		executorEmpty := NewGeneticAlgorithmExecutor[int](emptyPop, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
-		err = executorEmpty.PerformMutation()
+		err = executorEmpty.PerformMutation(context.Background())
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 
 		// population with nil Individuals slice
 		populationNilIndividuals := &Population[int]{}
 		executorNilIndividuals := NewGeneticAlgorithmExecutor[int](populationNilIndividuals, nil, &mockMutator[int]{}, nil, &mockCrossover[int]{}, 10)
-		err = executorNilIndividuals.PerformMutation()
+		err = executorNilIndividuals.PerformMutation(context.Background())
 		assert.ErrorIs(t, err, ErrPopulationEmpty)
 	})
 }
@@ -1006,21 +1017,29 @@ func TestGeneticAlgorithmExecutor_Loop(t *testing.T) {
 	})
 }
 
-// BenchmarkExecutor_Loop benchmarks the Loop method with real dependencies
-func BenchmarkExecutor_Loop(b *testing.B) {
+// Helper function to create benchmark executor with specified worker configuration
+func createBenchmarkExecutor[T cmp.Ordered](numWorkers int, generations int) *GeneticAlgorithmExecutor[T] {
+	// Use real genetic algorithm components
+	fitnessEvaluator := NewSimpleSumFitnessEvaluator[T]()
+	mutator := NewSimpleSwapMutator[T](0.01)       // 1% mutation rate
+	selector, _ := NewTournamentSelector[T](3, 10) // 10 elitism
+	crossover := NewSinglePointCrossover[T]()
+
+	// Create executor with specified numWorkers
+	if numWorkers == 1 {
+		return NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, generations)
+	}
+	return NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, generations, numWorkers)
+}
+
+// Helper function to run loop benchmark with specified worker configuration
+func runLoopBenchmark(b *testing.B, numWorkers int) {
 	populationSize := 1000
 	chromosomeLength := 100
 	generations := 10
-	tournamentSize := 3
 
-	// Use real genetic algorithm components
-	fitnessEvaluator := NewSimpleSumFitnessEvaluator[int]()
-	mutator := NewSimpleSwapMutator[int](0.01)                    // 1% mutation rate
-	selector, _ := NewTournamentSelector[int](tournamentSize, 10) // 10 elitism
-	crossover := NewSinglePointCrossover[int]()
-
-	// Create executor with real components
-	executor := NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, generations)
+	// Create executor
+	executor := createBenchmarkExecutor[int](numWorkers, generations)
 
 	// Pre-create all populations to avoid timing them
 	populations := make([]*Population[int], b.N)
@@ -1039,4 +1058,66 @@ func BenchmarkExecutor_Loop(b *testing.B) {
 			b.Fatalf("Loop failed: %v", err)
 		}
 	}
+}
+
+// BenchmarkExecutor_Loop_DefaultWorkers benchmarks the Loop method with default workers (1)
+func BenchmarkExecutor_Loop_DefaultWorkers(b *testing.B) {
+	runLoopBenchmark(b, 1)
+}
+
+// BenchmarkExecutor_Loop_UnlimitedWorkers benchmarks the Loop method with unlimited workers (-1)
+func BenchmarkExecutor_Loop_UnlimitedWorkers(b *testing.B) {
+	runLoopBenchmark(b, -1)
+}
+
+// Helper function to create mutation benchmark executor with specified worker configuration
+func createMutationBenchmarkExecutor[T cmp.Ordered](numWorkers int) *GeneticAlgorithmExecutor[T] {
+	// Use real genetic algorithm components
+	fitnessEvaluator := NewSimpleSumFitnessEvaluator[T]()
+	mutator := NewSimpleSwapMutator[T](1.0)        // 100% mutation rate
+	selector, _ := NewTournamentSelector[T](3, 10) // 10 elitism
+	crossover := NewSinglePointCrossover[T]()
+
+	// Create executor with specified numWorkers
+	if numWorkers == 1 {
+		return NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, 10)
+	}
+	return NewGeneticAlgorithmExecutor(nil, fitnessEvaluator, mutator, selector, crossover, 10, numWorkers)
+}
+
+// Helper function to run mutation benchmark with specified worker configuration
+func runMutationBenchmark(b *testing.B, numWorkers int) {
+	populationSize := 10000
+	chromosomeLength := 100
+
+	// Create executor
+	executor := createMutationBenchmarkExecutor[int](numWorkers)
+
+	// Pre-create all populations to avoid timing them
+	populations := make([]*Population[int], b.N)
+	for i := 0; i < b.N; i++ {
+		populations[i] = createBenchmarkPopulation(populationSize, chromosomeLength)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Just assign the pre-created population (no creation, no timing)
+		executor.population = populations[i]
+
+		// Run the mutation operation (this IS timed)
+		err := executor.PerformMutation(context.Background())
+		if err != nil {
+			b.Fatalf("PerformMutation failed: %v", err)
+		}
+	}
+}
+
+// BenchmarkExecutor_PerformMutation_DefaultWorkers benchmarks PerformMutation with default workers (1)
+func BenchmarkExecutor_PerformMutation_DefaultWorkers(b *testing.B) {
+	runMutationBenchmark(b, 1)
+}
+
+// BenchmarkExecutor_PerformMutation_UnlimitedWorkers benchmarks PerformMutation with unlimited workers (-1)
+func BenchmarkExecutor_PerformMutation_UnlimitedWorkers(b *testing.B) {
+	runMutationBenchmark(b, -1)
 }

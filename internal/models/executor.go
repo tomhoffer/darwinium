@@ -69,15 +69,32 @@ func (e *GeneticAlgorithmExecutor[T]) RefreshFitness(ctx context.Context) error 
 	return nil
 }
 
-func (e *GeneticAlgorithmExecutor[T]) PerformMutation() error {
+func (e *GeneticAlgorithmExecutor[T]) PerformMutation(ctx context.Context) error {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
 		return ErrPopulationEmpty
 	}
+
+	// Run mutation in goroutines with limited concurrency
+	g, gCtx := errgroup.WithContext(ctx)
+
+	if e.numWorkers != -1 {
+		g.SetLimit(e.numWorkers)
+	}
+
 	for i := range e.population.Individuals {
-		err := e.mutator.Mutate(&e.population.Individuals[i].Chromosome)
-		if err != nil {
-			return err
-		}
+		individualIndex := i // explicit capture
+		g.Go(func() error {
+			err := e.mutator.Mutate(gCtx, &e.population.Individuals[individualIndex].Chromosome)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	// Wait for all goroutines to finish
+	if err := g.Wait(); err != nil {
+		return NewFitnessEvaluationError("failed to evaluate fitness", err)
 	}
 	return nil
 }
@@ -165,7 +182,7 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int)
 		e.population = offspringPopulation
 
 		// e. Perform mutation
-		if err := e.PerformMutation(); err != nil {
+		if err := e.PerformMutation(ctx); err != nil {
 			return nil, fmt.Errorf("failed to perform mutation at generation %d: %w", i, err)
 		}
 	}

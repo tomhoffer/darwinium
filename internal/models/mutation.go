@@ -3,6 +3,7 @@ package models
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"math/rand"
 )
@@ -13,11 +14,12 @@ type IMutator[T cmp.Ordered] interface {
 	// Mutate applies a mutation to the given chromosome in place.
 	//
 	// Parameters:
+	//   - ctx: Context for cancellation and timeout control
 	//   - chromosome: The genetic material to mutate
 	//
 	// Returns:
 	//   - error: Any error that occurred during mutation
-	Mutate(chromosome *[]T) error
+	Mutate(ctx context.Context, chromosome *[]T) error
 }
 
 // SimpleSwapMutator performs a simple mutation by swapping two distinct genes
@@ -39,7 +41,7 @@ func NewSimpleSwapMutator[T cmp.Ordered](mutationRate ...float64) *SimpleSwapMut
 
 // Mutate swaps two distinct positions in the chromosome. The mutation is performed in place.
 // Returns a MutationError wrapping an InvalidChromosomeError if the chromosome is empty or too short.
-func (s SimpleSwapMutator[T]) Mutate(chromosome *[]T) error {
+func (s SimpleSwapMutator[T]) Mutate(ctx context.Context, chromosome *[]T) error {
 	// Validate chromosome
 	if chromosome == nil || *chromosome == nil || len(*chromosome) == 0 {
 		return NewMutationError("cannot mutate chromosome", NewInvalidChromosomeError("empty chromosome found", nil))
@@ -49,6 +51,11 @@ func (s SimpleSwapMutator[T]) Mutate(chromosome *[]T) error {
 	}
 	if rand.Float64() > s.mutationRate {
 		return nil
+	}
+
+	// Check for context cancellation before proceeding
+	if ctx.Err() != nil {
+		return NewMutationError("context cancelled", ctx.Err())
 	}
 
 	n := len(*chromosome)
