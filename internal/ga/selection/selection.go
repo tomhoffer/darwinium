@@ -1,10 +1,12 @@
-package models
+package selection
 
 import (
 	"cmp"
 	"fmt"
 	"math/rand"
 	"sort"
+
+	"github.com/tomhoffer/darwinium/internal/core"
 )
 
 // SelectionError represents an error that occurs during a selection process.
@@ -39,7 +41,7 @@ func NewSelectionError(message string, wrapped error) *SelectionError {
 
 // ISelector defines the interface for selection operators in genetic algorithms.
 type ISelector[T cmp.Ordered] interface {
-	Select(population *Population[T]) (*Population[T], error)
+	Select(population *core.Population[T]) (*core.Population[T], error)
 }
 
 // TournamentSelector performs selection using a tournament method.
@@ -69,9 +71,9 @@ func NewTournamentSelector[T cmp.Ordered](tournamentSize int, numElites int) (*T
 // population of the same size, composed of individuals selected through
 // a series of tournaments. If elitism is enabled, the fittest individuals
 // are preserved and passed directly to the next generation.
-func (ts *TournamentSelector[T]) Select(population *Population[T]) (*Population[T], error) {
+func (ts *TournamentSelector[T]) Select(population *core.Population[T]) (*core.Population[T], error) {
 	if population == nil || len(population.Individuals) == 0 {
-		return nil, NewSelectionError("cannot perform selection on nil or empty population", ErrPopulationEmpty)
+		return nil, NewSelectionError("cannot perform selection on nil or empty population", core.ErrPopulationEmpty)
 	}
 
 	populationSize := len(population.Individuals)
@@ -80,11 +82,11 @@ func (ts *TournamentSelector[T]) Select(population *Population[T]) (*Population[
 			fmt.Sprintf("number of elites (%d) is greater than or equal to population size (%d)", ts.NumElites, populationSize), nil)
 	}
 
-	offspring := make([]Solution[T], 0, populationSize)
-	var selectionPool []Solution[T]
+	offspring := make([]core.Solution[T], 0, populationSize)
+	var selectionPool []core.Solution[T]
 
 	if ts.NumElites > 0 {
-		sortedIndividuals := make([]Solution[T], populationSize)
+		sortedIndividuals := make([]core.Solution[T], populationSize)
 		copy(sortedIndividuals, population.Individuals)
 		sort.Slice(sortedIndividuals, func(i, j int) bool {
 			return sortedIndividuals[i].Fitness > sortedIndividuals[j].Fitness
@@ -112,5 +114,5 @@ func (ts *TournamentSelector[T]) Select(population *Population[T]) (*Population[
 		offspring = append(offspring, *selectionPool[winnerIndex].DeepCopy())
 	}
 
-	return &Population[T]{Individuals: offspring}, nil
+	return &core.Population[T]{Individuals: offspring}, nil
 }

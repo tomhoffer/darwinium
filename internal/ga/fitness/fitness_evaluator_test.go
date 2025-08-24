@@ -1,4 +1,4 @@
-package models
+package fitness
 
 import (
 	"cmp"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tomhoffer/darwinium/internal/core"
 	"github.com/tomhoffer/darwinium/internal/utils"
 )
 
@@ -49,7 +50,7 @@ func TestSimpleSumFitnessEvaluator_Int(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected wrapped InvalidChromosomeError")
 
 		assert.Equal(t, 0.0, result)
@@ -316,7 +317,7 @@ func TestSimpleSumFitnessEvaluator_String(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected wrapped InvalidChromosomeError")
 	})
 
@@ -328,7 +329,7 @@ func TestSimpleSumFitnessEvaluator_String(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected wrapped InvalidChromosomeError")
 
 		assert.Equal(t, 0.0, result)
@@ -342,7 +343,7 @@ func TestSimpleSumFitnessEvaluator_String(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected wrapped InvalidChromosomeError")
 
 		assert.Equal(t, 0.0, result)
@@ -394,7 +395,7 @@ func TestSimpleSumFitnessEvaluator_CustomTypes(t *testing.T) {
 		var fe *FitnessEvaluationError
 		require.True(t, errors.As(err, &fe), "expected FitnessEvaluationError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected wrapped InvalidChromosomeError")
 		assert.Equal(t, 0.0, result)
 	})
@@ -435,7 +436,7 @@ func (m *mockSleepingFitnessEvaluator[T]) Evaluate(ctx context.Context, chromoso
 		converted, err := utils.ConvertToFloat64(val)
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid chromosome value %v", val)
-			wrappedErr := NewInvalidChromosomeError("unable to convert chromosome value to float64", err)
+			wrappedErr := core.NewInvalidChromosomeError("unable to convert chromosome value to float64", err)
 			return 0, NewFitnessEvaluationError(errMsg, wrappedErr)
 		}
 		sum += converted

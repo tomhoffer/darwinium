@@ -1,4 +1,4 @@
-package models
+package executor
 
 import (
 	"cmp"
@@ -7,20 +7,25 @@ import (
 	"math/rand"
 
 	progressbar "github.com/schollz/progressbar/v3"
+	"github.com/tomhoffer/darwinium/internal/core"
+	"github.com/tomhoffer/darwinium/internal/ga/crossover"
+	"github.com/tomhoffer/darwinium/internal/ga/fitness"
+	"github.com/tomhoffer/darwinium/internal/ga/mutation"
+	"github.com/tomhoffer/darwinium/internal/ga/selection"
 	"golang.org/x/sync/errgroup"
 )
 
 type GeneticAlgorithmExecutor[T cmp.Ordered] struct {
-	population       *Population[T]
-	fitnessEvaluator IFitnessEvaluator[T]
-	mutator          IMutator[T]
-	selector         ISelector[T]
-	crossover        ICrossover[T]
+	population       *core.Population[T]
+	fitnessEvaluator fitness.IFitnessEvaluator[T]
+	mutator          mutation.IMutator[T]
+	selector         selection.ISelector[T]
+	crossover        crossover.ICrossover[T]
 	generations      int
 	numWorkers       int
 }
 
-func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitnessEvaluator IFitnessEvaluator[T], mutator IMutator[T], selector ISelector[T], crossover ICrossover[T], generations int, numWorkers ...int) *GeneticAlgorithmExecutor[T] {
+func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *core.Population[T], fitnessEvaluator fitness.IFitnessEvaluator[T], mutator mutation.IMutator[T], selector selection.ISelector[T], crossover crossover.ICrossover[T], generations int, numWorkers ...int) *GeneticAlgorithmExecutor[T] {
 	// Default to 1 worker if not specified
 	workerCount := 1
 	if len(numWorkers) > 0 {
@@ -40,7 +45,7 @@ func NewGeneticAlgorithmExecutor[T cmp.Ordered](population *Population[T], fitne
 
 func (e *GeneticAlgorithmExecutor[T]) RefreshFitness(ctx context.Context) error {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
-		return ErrPopulationEmpty
+		return core.ErrPopulationEmpty
 	}
 
 	// Run fitness evaluation in goroutines with limited concurrency
@@ -64,14 +69,14 @@ func (e *GeneticAlgorithmExecutor[T]) RefreshFitness(ctx context.Context) error 
 
 	// Wait for all goroutines to finish
 	if err := g.Wait(); err != nil {
-		return NewFitnessEvaluationError("failed to evaluate fitness", err)
+		return fitness.NewFitnessEvaluationError("failed to evaluate fitness", err)
 	}
 	return nil
 }
 
 func (e *GeneticAlgorithmExecutor[T]) PerformMutation(ctx context.Context) error {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
-		return ErrPopulationEmpty
+		return core.ErrPopulationEmpty
 	}
 
 	// Run mutation in goroutines with limited concurrency
@@ -94,14 +99,14 @@ func (e *GeneticAlgorithmExecutor[T]) PerformMutation(ctx context.Context) error
 
 	// Wait for all goroutines to finish
 	if err := g.Wait(); err != nil {
-		return NewFitnessEvaluationError("failed to evaluate fitness", err)
+		return fitness.NewFitnessEvaluationError("failed to evaluate fitness", err)
 	}
 	return nil
 }
 
-func (e *GeneticAlgorithmExecutor[T]) PerformSelection() (*Population[T], error) {
+func (e *GeneticAlgorithmExecutor[T]) PerformSelection() (*core.Population[T], error) {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
-		return nil, ErrPopulationEmpty
+		return nil, core.ErrPopulationEmpty
 	}
 	newPopulation, err := e.selector.Select(e.population)
 	if err != nil {
@@ -110,9 +115,9 @@ func (e *GeneticAlgorithmExecutor[T]) PerformSelection() (*Population[T], error)
 	return newPopulation, nil
 }
 
-func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error) {
+func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*core.Population[T], error) {
 	if e.population == nil || e.population.Individuals == nil || len(e.population.Individuals) == 0 {
-		return nil, NewCrossoverError("cannot perform crossover on empty population", ErrPopulationEmpty)
+		return nil, crossover.NewCrossoverError("cannot perform crossover on empty population", core.ErrPopulationEmpty)
 	}
 
 	individuals := e.population.Individuals
@@ -120,8 +125,8 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 		individuals[i], individuals[j] = individuals[j], individuals[i]
 	})
 
-	offspringPopulation := &Population[T]{
-		Individuals: make([]Solution[T], 0, len(individuals)),
+	offspringPopulation := &core.Population[T]{
+		Individuals: make([]core.Solution[T], 0, len(individuals)),
 	}
 
 	for i := 0; i < len(individuals); i += 2 {
@@ -138,7 +143,7 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 			return nil, err
 		}
 
-		offspringPopulation.Individuals = append(offspringPopulation.Individuals, Solution[T]{Chromosome: offspringChr1}, Solution[T]{Chromosome: offspringChr2})
+		offspringPopulation.Individuals = append(offspringPopulation.Individuals, core.Solution[T]{Chromosome: offspringChr1}, core.Solution[T]{Chromosome: offspringChr2})
 	}
 
 	return offspringPopulation, nil
@@ -147,7 +152,7 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*Population[T], error)
 // Loop runs the genetic algorithm for the specified number of generations.
 // It performs fitness evaluation, selection, crossover, and mutation in each generation.
 // The method returns the final population and any error that occurred during execution.
-func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int) (*Population[T], error) {
+func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int) (*core.Population[T], error) {
 	bar := progressbar.Default(int64(generations))
 	fmt.Println("Starting genetic algorithm...")
 	for i := 0; i < generations; i++ {

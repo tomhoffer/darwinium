@@ -5,7 +5,12 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/tomhoffer/darwinium/internal/models"
+	"github.com/tomhoffer/darwinium/internal/core"
+	"github.com/tomhoffer/darwinium/internal/ga/crossover"
+	"github.com/tomhoffer/darwinium/internal/ga/executor"
+	"github.com/tomhoffer/darwinium/internal/ga/fitness"
+	"github.com/tomhoffer/darwinium/internal/ga/mutation"
+	"github.com/tomhoffer/darwinium/internal/ga/selection"
 )
 
 const (
@@ -23,8 +28,8 @@ const (
 // Custom chromosome type
 type chromosomeType int
 
-func generateRandomPopulation(populationFactory *models.PopulationFactory[chromosomeType], solutionFactory *models.SolutionFactory[chromosomeType]) *models.Population[chromosomeType] {
-	var individuals []models.Solution[chromosomeType]
+func generateRandomPopulation(populationFactory *core.PopulationFactory[chromosomeType], solutionFactory *core.SolutionFactory[chromosomeType]) *core.Population[chromosomeType] {
+	var individuals []core.Solution[chromosomeType]
 	for i := 0; i < populationSize; i++ {
 		chromosome := make([]chromosomeType, chromosomeLength)
 		for j := 0; j < chromosomeLength; j++ {
@@ -37,12 +42,12 @@ func generateRandomPopulation(populationFactory *models.PopulationFactory[chromo
 
 func main() {
 	// 1. Dependency injection
-	solutionFactory := models.NewSolutionFactory[chromosomeType]()
-	populationFactory := models.NewPopulationFactory[chromosomeType]()
-	fitnessEvaluator := models.NewSimpleSumFitnessEvaluator[chromosomeType]()
-	crossoverer := models.NewSinglePointCrossover[chromosomeType]()
-	mutator := models.NewSimpleSwapMutator[chromosomeType](mutationRate)
-	selector, err := models.NewTournamentSelector[chromosomeType](tournamentSize, elitismCount)
+	solutionFactory := core.NewSolutionFactory[chromosomeType]()
+	populationFactory := core.NewPopulationFactory[chromosomeType]()
+	fitnessEvaluator := fitness.NewSimpleSumFitnessEvaluator[chromosomeType]()
+	crossoverer := crossover.NewSinglePointCrossover[chromosomeType]()
+	mutator := mutation.NewSimpleSwapMutator[chromosomeType](mutationRate)
+	selector, err := selection.NewTournamentSelector[chromosomeType](tournamentSize, elitismCount)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create selector: %v", err))
 	}
@@ -51,7 +56,7 @@ func main() {
 	population := generateRandomPopulation(populationFactory, solutionFactory)
 
 	// 3. Instantiate the GeneticAlgorithmExecutor
-	executor := models.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations, numWorkers)
+	executor := executor.NewGeneticAlgorithmExecutor(population, fitnessEvaluator, mutator, selector, crossoverer, generations, numWorkers)
 
 	// 4. Run the GA loop
 	ctx := context.Background()

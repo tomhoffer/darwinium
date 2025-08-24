@@ -1,4 +1,4 @@
-package models
+package crossover
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tomhoffer/darwinium/internal/core"
 )
 
 // TestSinglePointCrossover_Int tests the SinglePointCrossover with integer chromosomes.
@@ -63,7 +64,7 @@ func TestSinglePointCrossover_Int(t *testing.T) {
 		var ce *CrossoverError
 		require.True(t, errors.As(err, &ce), "expected CrossoverError")
 
-		var ice *InvalidChromosomeError
+		var ice *core.InvalidChromosomeError
 		require.True(t, errors.As(err, &ice), "expected InvalidChromosomeError")
 	})
 
@@ -89,7 +90,7 @@ func TestSinglePointCrossover_Int(t *testing.T) {
 				var ce *CrossoverError
 				require.True(t, errors.As(err, &ce), "expected CrossoverError")
 
-				var ice *InvalidChromosomeError
+				var ice *core.InvalidChromosomeError
 				require.True(t, errors.As(err, &ice), "expected InvalidChromosomeError to be wrapped")
 			})
 		}

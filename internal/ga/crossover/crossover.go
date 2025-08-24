@@ -1,9 +1,11 @@
 // Package models provides data structures and interfaces for genetic algorithm solutions.
-package models
+package crossover
 
 import (
 	"fmt"
 	"math/rand"
+
+	"github.com/tomhoffer/darwinium/internal/core"
 )
 
 // ICrossover defines the interface for chromosome crossover in genetic algorithms.
@@ -37,11 +39,11 @@ func NewSinglePointCrossover[T any]() *SinglePointCrossover[T] {
 // Crossover performs a single-point crossover on two parent chromosomes.
 func (s SinglePointCrossover[T]) Crossover(parent1, parent2 []T) ([]T, []T, error) {
 	if parent1 == nil || len(parent1) == 0 || parent2 == nil || len(parent2) == 0 {
-		return nil, nil, NewCrossoverError("cannot perform crossover", NewInvalidChromosomeError("parent chromosomes cannot be empty", nil))
+		return nil, nil, NewCrossoverError("cannot perform crossover", core.NewInvalidChromosomeError("parent chromosomes cannot be empty", nil))
 	}
 
 	if len(parent1) != len(parent2) {
-		return nil, nil, NewCrossoverError("cannot perform crossover", NewInvalidChromosomeError("parent chromosomes must be of the same length", nil))
+		return nil, nil, NewCrossoverError("cannot perform crossover", core.NewInvalidChromosomeError("parent chromosomes must be of the same length", nil))
 	}
 
 	parent1Len := len(parent1)

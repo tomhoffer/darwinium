@@ -1,11 +1,12 @@
 // Package models provides data structures and interfaces for genetic algorithm solutions.
-package models
+package fitness
 
 import (
 	"cmp"
 	"context"
 	"fmt"
 
+	"github.com/tomhoffer/darwinium/internal/core"
 	"github.com/tomhoffer/darwinium/internal/utils"
 )
 
@@ -55,7 +56,7 @@ func (s SimpleSumFitnessEvaluator[T]) Evaluate(ctx context.Context, chromosome *
 	}
 
 	if len(*chromosome) == 0 {
-		return 0.0, NewFitnessEvaluationError("cannot calculate fitness", NewInvalidChromosomeError("empty chromosome found", nil))
+		return 0.0, NewFitnessEvaluationError("cannot calculate fitness", core.NewInvalidChromosomeError("empty chromosome found", nil))
 	}
 
 	var sum float64
@@ -70,7 +71,7 @@ func (s SimpleSumFitnessEvaluator[T]) Evaluate(ctx context.Context, chromosome *
 		converted, err := utils.ConvertToFloat64(val)
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid chromosome value %v", val)
-			wrappedErr := NewInvalidChromosomeError("unable to convert chromosome value to float64", err)
+			wrappedErr := core.NewInvalidChromosomeError("unable to convert chromosome value to float64", err)
 			return 0, NewFitnessEvaluationError(errMsg, wrappedErr)
 		}
 		sum += converted

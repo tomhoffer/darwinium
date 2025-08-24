@@ -1,5 +1,5 @@
-// Package models provides data structures and interfaces for genetic algorithm solutions.
-package models
+// Package core provides data structures and interfaces for genetic algorithm solutions.
+package core
 
 import (
 	"errors"

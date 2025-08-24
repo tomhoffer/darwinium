@@ -1,5 +1,5 @@
 // Package models provides tests for the models package.
-package models
+package selection
 
 import (
 	"cmp"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tomhoffer/darwinium/internal/core"
 )
 
 //
@@ -68,8 +69,8 @@ func TestNewTournamentSelector(t *testing.T) {
 
 	t.Run("Returns error when number of elites is greater than population size", func(t *testing.T) {
 		t.Parallel()
-		population := &Population[int]{
-			Individuals: []Solution[int]{
+		population := &core.Population[int]{
+			Individuals: []core.Solution[int]{
 				{Chromosome: []int{1}, Fitness: 10},
 			},
 		}
@@ -87,17 +88,17 @@ func TestTournamentSelector_Select(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
 		name        string
-		population  *Population[int]
+		population  *core.Population[int]
 		selector    *TournamentSelector[int]
 		assertError func(t *testing.T, err error)
-		checkFunc   func(t *testing.T, original, selected *Population[int])
+		checkFunc   func(t *testing.T, original, selected *core.Population[int])
 	}{
 		{
 			name:       "Empty population returns error",
-			population: &Population[int]{Individuals: []Solution[int]{}},
+			population: &core.Population[int]{Individuals: []core.Solution[int]{}},
 			selector:   newSelector[int](t, 3, 0),
 			assertError: func(t *testing.T, err error) {
-				assert.ErrorIs(t, err, ErrPopulationEmpty)
+				assert.ErrorIs(t, err, core.ErrPopulationEmpty)
 			},
 		},
 		{
@@ -105,34 +106,34 @@ func TestTournamentSelector_Select(t *testing.T) {
 			population: nil,
 			selector:   newSelector[int](t, 3, 0),
 			assertError: func(t *testing.T, err error) {
-				assert.ErrorIs(t, err, ErrPopulationEmpty)
+				assert.ErrorIs(t, err, core.ErrPopulationEmpty)
 			},
 		},
 		{
 			name: "All individuals having zero fitness pass",
-			population: &Population[int]{
-				Individuals: []Solution[int]{
+			population: &core.Population[int]{
+				Individuals: []core.Solution[int]{
 					{Chromosome: []int{1}, Fitness: 0},
 					{Chromosome: []int{2}, Fitness: 0},
 					{Chromosome: []int{3}, Fitness: 0},
 				},
 			},
 			selector: newSelector[int](t, 3, 0),
-			checkFunc: func(t *testing.T, original, selected *Population[int]) {
+			checkFunc: func(t *testing.T, original, selected *core.Population[int]) {
 				assert.Equal(t, len(original.Individuals), len(selected.Individuals))
 			},
 		},
 		{
 			name: "All individuals being identical pass",
-			population: &Population[int]{
-				Individuals: []Solution[int]{
+			population: &core.Population[int]{
+				Individuals: []core.Solution[int]{
 					{Chromosome: []int{1}, Fitness: 10},
 					{Chromosome: []int{1}, Fitness: 10},
 					{Chromosome: []int{1}, Fitness: 10},
 				},
 			},
 			selector: newSelector[int](t, 3, 0),
-			checkFunc: func(t *testing.T, original, selected *Population[int]) {
+			checkFunc: func(t *testing.T, original, selected *core.Population[int]) {
 				assert.Equal(t, len(original.Individuals), len(selected.Individuals))
 				for _, ind := range selected.Individuals {
 					assert.Equal(t, original.Individuals[0], ind)
@@ -141,15 +142,15 @@ func TestTournamentSelector_Select(t *testing.T) {
 		},
 		{
 			name: "Various individuals pass",
-			population: &Population[int]{
-				Individuals: []Solution[int]{
+			population: &core.Population[int]{
+				Individuals: []core.Solution[int]{
 					{Chromosome: []int{1}, Fitness: 1},
 					{Chromosome: []int{1}, Fitness: 2},
 					{Chromosome: []int{1}, Fitness: 3},
 				},
 			},
 			selector: newSelector[int](t, 3, 0),
-			checkFunc: func(t *testing.T, original, selected *Population[int]) {
+			checkFunc: func(t *testing.T, original, selected *core.Population[int]) {
 				assert.Equal(t, len(original.Individuals), len(selected.Individuals))
 			},
 		},
@@ -175,8 +176,8 @@ func TestTournamentSelector_Select(t *testing.T) {
 // TestTournamentSelector_Select_WithElitism tests that elitism correctly preserves the best individuals.
 func TestTournamentSelector_Select_WithElitism(t *testing.T) {
 	t.Parallel()
-	population := &Population[int]{
-		Individuals: []Solution[int]{
+	population := &core.Population[int]{
+		Individuals: []core.Solution[int]{
 			{Chromosome: []int{1}, Fitness: 10},
 			{Chromosome: []int{2}, Fitness: 20},
 			{Chromosome: []int{3}, Fitness: 30},
@@ -193,8 +194,8 @@ func TestTournamentSelector_Select_WithElitism(t *testing.T) {
 	assert.Equal(t, len(population.Individuals), len(selectedPopulation.Individuals))
 
 	// Elites are the two best individuals
-	elite1 := Solution[int]{Chromosome: []int{5}, Fitness: 50}
-	elite2 := Solution[int]{Chromosome: []int{4}, Fitness: 40}
+	elite1 := core.Solution[int]{Chromosome: []int{5}, Fitness: 50}
+	elite2 := core.Solution[int]{Chromosome: []int{4}, Fitness: 40}
 	assert.Contains(t, selectedPopulation.Individuals, elite1)
 	assert.Contains(t, selectedPopulation.Individuals, elite2)
 }
@@ -208,20 +209,20 @@ func newSelector[T cmp.Ordered](t *testing.T, tournamentSize, numElites int) *To
 }
 
 // createBenchmarkPopulation is a helper function to create a population for benchmarking.
-func createBenchmarkPopulation(size, chromosomeLength int) *Population[int] {
-	individuals := make([]Solution[int], size)
+func createBenchmarkPopulation(size, chromosomeLength int) *core.Population[int] {
+	individuals := make([]core.Solution[int], size)
 	for i := 0; i < size; i++ {
 		chromosome := make([]int, chromosomeLength)
 		// math/rand is sufficient for benchmark data
 		for j := 0; j < chromosomeLength; j++ {
 			chromosome[j] = rand.Intn(100)
 		}
-		individuals[i] = Solution[int]{
+		individuals[i] = core.Solution[int]{
 			Chromosome: chromosome,
 			Fitness:    rand.Float64() * 100,
 		}
 	}
-	return &Population[int]{Individuals: individuals}
+	return &core.Population[int]{Individuals: individuals}
 }
 
 // BenchmarkTournamentSelector_Select benchmarks the Select method over various population sizes.

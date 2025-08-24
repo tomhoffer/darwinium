@@ -1,11 +1,13 @@
 // Package models provides data structures and interfaces for genetic algorithm solutions.
-package models
+package mutation
 
 import (
 	"cmp"
 	"context"
 	"fmt"
 	"math/rand"
+
+	"github.com/tomhoffer/darwinium/internal/core"
 )
 
 // IMutator defines the interface for chromosome mutation in genetic algorithms.
@@ -44,10 +46,10 @@ func NewSimpleSwapMutator[T cmp.Ordered](mutationRate ...float64) *SimpleSwapMut
 func (s SimpleSwapMutator[T]) Mutate(ctx context.Context, chromosome *[]T) error {
 	// Validate chromosome
 	if chromosome == nil || *chromosome == nil || len(*chromosome) == 0 {
-		return NewMutationError("cannot mutate chromosome", NewInvalidChromosomeError("empty chromosome found", nil))
+		return NewMutationError("cannot mutate chromosome", core.NewInvalidChromosomeError("empty chromosome found", nil))
 	}
 	if len(*chromosome) < 2 {
-		return NewMutationError("cannot mutate chromosome", NewInvalidChromosomeError("chromosome must contain at least 2 genes", nil))
+		return NewMutationError("cannot mutate chromosome", core.NewInvalidChromosomeError("chromosome must contain at least 2 genes", nil))
 	}
 	if rand.Float64() > s.mutationRate {
 		return nil
