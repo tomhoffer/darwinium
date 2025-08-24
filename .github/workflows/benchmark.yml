@@ -1,0 +1,33 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  benchmark:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Run benchmarks
+        run: go test -bench . -benchmem ./... > benchmarks.txt
+
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Go Benchmarks
+          tool: 'go'
+          output-file-path: benchmarks.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          comment-on-alert: true
+          fail-on-alert: true
