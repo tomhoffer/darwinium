@@ -12,6 +12,7 @@ import (
 	"github.com/tomhoffer/darwinium/internal/ga/fitness"
 	"github.com/tomhoffer/darwinium/internal/ga/mutation"
 	"github.com/tomhoffer/darwinium/internal/ga/selection"
+	"github.com/tomhoffer/darwinium/internal/utils"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -153,12 +154,20 @@ func (e *GeneticAlgorithmExecutor[T]) PerformCrossover() (*core.Population[T], e
 // It performs fitness evaluation, selection, crossover, and mutation in each generation.
 // The method returns the final population and any error that occurred during execution.
 func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int) (*core.Population[T], error) {
-	bar := progressbar.Default(int64(generations))
-	fmt.Println("Starting genetic algorithm...")
+	// Check if we're running in a test environment
+	isTest := utils.IsTestEnvironment()
+
+	var bar *progressbar.ProgressBar
+	if !isTest {
+		bar = progressbar.Default(int64(generations))
+		fmt.Println("Starting genetic algorithm...")
+	}
+
 	for i := 0; i < generations; i++ {
-		err := bar.Add(1)
-		if err != nil {
-			return nil, err
+		if !isTest && bar != nil {
+			if err := bar.Add(1); err != nil {
+				return nil, err
+			}
 		}
 
 		// a. Refresh fitness for the current population
@@ -167,8 +176,7 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int)
 		}
 
 		// b. Find and print the best fitness in the current generation
-		_, err = e.population.BestFitness()
-		if err != nil {
+		if _, err := e.population.BestFitness(); err != nil {
 			return nil, fmt.Errorf("failed to get best fitness at generation %d: %w", i, err)
 		}
 
@@ -196,6 +204,8 @@ func (e *GeneticAlgorithmExecutor[T]) Loop(ctx context.Context, generations int)
 		return nil, fmt.Errorf("failed to refresh fitness: %w", err)
 	}
 
-	fmt.Println("\nFinished genetic algorithm!")
+	if !isTest {
+		fmt.Println("\nFinished genetic algorithm!")
+	}
 	return e.population, nil
 }
